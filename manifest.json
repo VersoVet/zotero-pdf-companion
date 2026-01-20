@@ -1,0 +1,19 @@
+{
+    "manifest_version": 2,
+    "name": "PDF Companion",
+    "version": "2.3.1",
+    "description": "Auto PDF fetch for Zotero (v2.3.1)",
+    "author": "Onyx",
+    "icons": {
+      "48": "skin/icon.png",
+      "96": "skin/icon@2x.png"
+    },
+    "applications": {
+        "zotero": {
+            "id": "pdf-companion@onyx.local",
+            "update_url": "https://raw.githubusercontent.com/VersoVet/zotero-pdf-companion/main/updates.json",
+            "strict_min_version": "6.999",
+            "strict_max_version": "7.0.*"
+        }
+    }
+}

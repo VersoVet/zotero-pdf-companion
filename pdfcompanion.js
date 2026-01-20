@@ -89,6 +89,15 @@ PdfCompanion = {
         });
         submenuPopup.appendChild(attachLocal);
 
+        // Option 3: Enrich metadata
+        let enrichMeta = _create(doc, "menuitem");
+        enrichMeta.id = "zotero-itemmenu-pdfcompanion-enrich";
+        enrichMeta.setAttribute("label", "Enrich metadata");
+        enrichMeta.addEventListener("command", () => {
+            PdfCompanion.enrichMetadataForSelected();
+        });
+        submenuPopup.appendChild(enrichMeta);
+
         submenu.appendChild(submenuPopup);
         doc.getElementById("zotero-itemmenu").appendChild(submenu);
         this.storeAddedElement(submenu);
@@ -116,6 +125,14 @@ PdfCompanion = {
             PdfCompanion.attachLocalPdfForSelected();
         });
         toolsSubmenuPopup.appendChild(toolsAttachLocal);
+
+        let toolsEnrichMeta = _create(doc, "menuitem");
+        toolsEnrichMeta.id = "menu_Tools-pdfcompanion-enrich";
+        toolsEnrichMeta.setAttribute("label", "Enrich metadata for Selected");
+        toolsEnrichMeta.addEventListener("command", () => {
+            PdfCompanion.enrichMetadataForSelected();
+        });
+        toolsSubmenuPopup.appendChild(toolsEnrichMeta);
 
         toolsSubmenu.appendChild(toolsSubmenuPopup);
         doc.getElementById("menu_ToolsPopup").appendChild(toolsSubmenu);
@@ -417,6 +434,108 @@ PdfCompanion = {
         } catch (e) {
             this.log("Upload error: " + e);
             this.showNotification("Error", e.message || "Upload failed");
+        }
+    },
+
+    // === ENRICH METADATA ===
+    async enrichMetadataForSelected() {
+        let items = Zotero.getActiveZoteroPane().getSelectedItems();
+        if (!items || items.length === 0) {
+            this.showNotification("PDF Companion", "No items selected");
+            return;
+        }
+
+        // Filter to regular items only
+        items = items.filter(item => !item.isAttachment() && !item.isNote());
+
+        if (items.length === 0) {
+            this.showNotification("PDF Companion", "No valid items selected");
+            return;
+        }
+
+        this.log("Enriching metadata for " + items.length + " items");
+
+        for (let item of items) {
+            await this.enrichMetadata(item);
+        }
+    },
+
+    async enrichMetadata(item) {
+        let title = item.getField("title") || "Unknown";
+        this.log("Enriching metadata for: " + title);
+
+        // Create a persistent progress window
+        let pw = new Zotero.ProgressWindow({ closeOnClick: false });
+        pw.changeHeadline("Enriching - " + title.substring(0, 30));
+        pw.show();
+
+        let stepIcon = "chrome://zotero/skin/spinner-16px.png";
+        let stepItem = new pw.ItemProgress(stepIcon, "Connecting to server...");
+
+        try {
+            // Use XMLHttpRequest for SSE streaming
+            let url = this.config.apiUrl + "/enrich/item-stream/" + encodeURIComponent(item.key);
+
+            let finalResult = await new Promise((resolve, reject) => {
+                let xhr = new XMLHttpRequest();
+                let lastIndex = 0;
+                let result = null;
+
+                xhr.open("GET", url, true);
+                xhr.setRequestHeader("Accept", "text/event-stream");
+
+                xhr.onprogress = () => {
+                    let newData = xhr.responseText.substring(lastIndex);
+                    lastIndex = xhr.responseText.length;
+
+                    let lines = newData.split("\n");
+                    for (let line of lines) {
+                        if (line.startsWith("data: ")) {
+                            try {
+                                let data = JSON.parse(line.substring(6));
+                                this.log("Enrich progress: " + data.step + " - " + data.message);
+
+                                // Update progress window
+                                stepItem.setText(data.message);
+
+                                if (data.step === "complete" || data.step === "error") {
+                                    result = data;
+                                }
+                            } catch (e) {
+                                // Ignore JSON parse errors
+                            }
+                        }
+                    }
+                };
+
+                xhr.onload = () => resolve(result);
+                xhr.onerror = () => reject(new Error("Connection failed"));
+                xhr.ontimeout = () => reject(new Error("Timeout"));
+                xhr.timeout = 120000;
+                xhr.send();
+            });
+
+            pw.close();
+
+            if (finalResult && finalResult.status === "success") {
+                let fields = finalResult.fields_updated || [];
+                let msg = fields.length > 0
+                    ? "Updated: " + fields.join(", ")
+                    : "No new data found";
+                this.showNotification("Metadata Enriched!", msg + "\n" + title.substring(0, 40));
+
+                // Refresh the item in Zotero UI
+                await item.reload();
+            } else if (finalResult) {
+                this.showNotification("Enrichment Failed", title.substring(0, 40) + "\n" + (finalResult.message || "Unknown error"));
+            } else {
+                this.showNotification("Error", "No response from server");
+            }
+
+        } catch (e) {
+            pw.close();
+            this.log("Enrich error: " + e);
+            this.showNotification("Error", e.message || "Connection failed");
         }
     },
 

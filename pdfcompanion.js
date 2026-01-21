@@ -320,51 +320,85 @@ PdfCompanion = {
         let stepItem = new pw.ItemProgress(stepIcon, "Connecting to server...");
 
         try {
-            let url = this.config.apiUrl + "/audit/recover-pdf";
-            let body = JSON.stringify({
-                key: item.key,
-                use_scihub: this.config.useScihub
-            });
+            // Use SSE streaming endpoint for real-time progress
+            let url = this.config.apiUrl + "/audit/recover-pdf-stream?" +
+                "key=" + encodeURIComponent(item.key) +
+                "&use_scihub=" + (this.config.useScihub ? "true" : "false");
 
             this.log("Request URL: " + url);
-            this.log("Request body: " + body);
 
-            stepItem.setText("Searching for PDF...");
+            let finalResult = await new Promise((resolve, reject) => {
+                let xhr = new XMLHttpRequest();
+                let lastIndex = 0;
+                let result = null;
 
-            let response = await Zotero.HTTP.request("POST", url, {
-                headers: { "Content-Type": "application/json" },
-                body: body,
-                timeout: 120000
+                xhr.open("GET", url, true);
+                xhr.setRequestHeader("Accept", "text/event-stream");
+
+                xhr.onprogress = () => {
+                    let newData = xhr.responseText.substring(lastIndex);
+                    lastIndex = xhr.responseText.length;
+
+                    let lines = newData.split("\n");
+                    for (let line of lines) {
+                        if (line.startsWith("data: ")) {
+                            try {
+                                let data = JSON.parse(line.substring(6));
+                                this.log("Progress: " + data.step + " - " + data.status + " - " + data.message);
+
+                                // Update progress window with current step
+                                let stepText = this.getStepDisplayText(data);
+                                stepItem.setText(stepText);
+
+                                // Store final result
+                                if (data.step === "complete" || data.step === "error") {
+                                    result = data;
+                                }
+                            } catch (e) {
+                                // Ignore JSON parse errors for incomplete chunks
+                            }
+                        }
+                    }
+                };
+
+                xhr.onload = () => resolve(result);
+                xhr.onerror = () => reject(new Error("Connection failed"));
+                xhr.ontimeout = () => reject(new Error("Timeout"));
+                xhr.timeout = 180000; // 3 minutes for longer searches
+                xhr.send();
             });
-
-            this.log("Response status: " + response.status);
-            this.log("Response body: " + response.responseText);
 
             pw.close();
 
-            let result = JSON.parse(response.responseText);
+            if (!finalResult) {
+                this.showNotification("Error", "No response from server");
+                return;
+            }
 
-            // Get the PDF URL from response (either dropbox_url or pdf_url)
-            let pdfUrl = result.dropbox_url || result.pdf_url;
+            // Get the PDF URL from response
+            let pdfUrl = finalResult.dropbox_url || finalResult.pdf_url;
 
-            // Update URL field if we have a PDF URL
-            if (pdfUrl) {
+            // Note: URL field is updated by zotero-manager to avoid sync conflicts
+            // Just trigger a sync to refresh the item in Zotero UI
+            if (finalResult.status === "success") {
+                // Trigger sync to pull server changes
                 try {
-                    item.setField("url", pdfUrl);
-                    await item.saveTx();
-                    this.log("Updated URL field with: " + pdfUrl);
+                    if (Zotero.Sync && Zotero.Sync.Runner) {
+                        Zotero.Sync.Runner.sync();
+                        this.log("Triggered sync to refresh item");
+                    }
                 } catch (e) {
-                    this.log("Failed to update URL field: " + e);
+                    this.log("Could not trigger sync: " + e);
                 }
             }
 
-            if (result.success) {
-                this.showNotification("PDF Found!", this.getSourceLabel(result.source) + "\n" + title.substring(0, 40));
+            if (finalResult.status === "success") {
+                this.showNotification("PDF Found!", this.getSourceLabel(finalResult.source) + "\n" + title.substring(0, 40));
             } else if (pdfUrl) {
                 // PDF already attached
                 this.showNotification("PDF Already Attached", title.substring(0, 40) + "\n\nPDF is already available.");
             } else {
-                this.showNotification("PDF Not Found", title.substring(0, 40) + "\n" + (result.error || "Not available") + "\n\nUse 'Attach local PDF' to add manually.");
+                this.showNotification("PDF Not Found", title.substring(0, 40) + "\n" + (finalResult.message || "Not available") + "\n\nUse 'Attach local PDF' to add manually.");
             }
 
         } catch (e) {
@@ -372,6 +406,41 @@ PdfCompanion = {
             this.log("Error: " + e);
             this.showNotification("Error", e.message || "Connection failed");
         }
+    },
+
+    getStepDisplayText(data) {
+        // Format display text based on step and status
+        let stepLabels = {
+            "start": "🔍 ",
+            "unpaywall": "📖 Unpaywall: ",
+            "pmc": "🏛️ PubMed Central: ",
+            "doi_redirect": "🔗 Publisher: ",
+            "scihub": "🔬 Sci-Hub: ",
+            "download": "⬇️ ",
+            "attach": "📎 ",
+            "complete": "✅ ",
+            "error": "❌ "
+        };
+
+        let statusLabels = {
+            "searching": "searching...",
+            "found": "found!",
+            "not_found": "not found",
+            "downloading": "downloading...",
+            "attaching": "attaching...",
+            "success": "done!",
+            "failed": "failed"
+        };
+
+        let prefix = stepLabels[data.step] || "";
+
+        // For searching/found statuses, show the status
+        if (data.status === "searching" || data.status === "found" || data.status === "not_found") {
+            return prefix + statusLabels[data.status];
+        }
+
+        // Otherwise show the message
+        return prefix + (data.message || statusLabels[data.status] || data.status);
     },
 
     // === ATTACH LOCAL PDF ===

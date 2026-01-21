@@ -69,6 +69,9 @@ async function startup({ id, version, resourceURI, rootURI = resourceURI.spec })
         var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
     }
 
+    // Initialize default preferences if not set
+    initDefaultPrefs();
+
     var aomStartup = Cc[
         "@mozilla.org/addons/addon-manager-startup;1"
     ].getService(Ci.amIAddonManagerStartup);
@@ -79,6 +82,21 @@ async function startup({ id, version, resourceURI, rootURI = resourceURI.spec })
 
     PdfCompanion.init({ id, version, rootURI });
     PdfCompanion.addToAllWindows();
+}
+
+function initDefaultPrefs() {
+    // Set default preferences if they don't exist
+    const defaults = {
+        "extensions.pdfcompanion.serverHost": "10.0.0.44",
+        "extensions.pdfcompanion.serverPort": 8451
+    };
+
+    for (let [key, value] of Object.entries(defaults)) {
+        if (Zotero.Prefs.get(key, true) === undefined) {
+            Zotero.Prefs.set(key, value, true);
+            log("Set default pref: " + key + " = " + value);
+        }
+    }
 }
 
 function onMainWindowLoad({ window }) {

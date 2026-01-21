@@ -1,8 +1,8 @@
 {
     "manifest_version": 2,
     "name": "PDF Companion",
-    "version": "2.4.0",
-    "description": "Auto PDF fetch for Zotero (v2.4.0)",
+    "version": "2.6.2",
+    "description": "Auto PDF fetch for Zotero (v2.6.2)",
     "author": "Onyx",
     "icons": {
       "48": "skin/icon.png",
@@ -15,5 +15,11 @@
             "strict_min_version": "6.999",
             "strict_max_version": "7.0.*"
         }
+    },
+    "options_ui": {
+        "page": "options.xhtml"
+    },
+    "defaults": {
+        "preferences": "prefs.js"
     }
 }

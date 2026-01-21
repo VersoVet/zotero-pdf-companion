@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>PDF Companion Settings</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 15px;
+            min-width: 350px;
+        }
+        h2 {
+            margin: 0 0 15px 0;
+            font-size: 16px;
+        }
+        .form-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .form-row label {
+            font-weight: bold;
+            width: 100px;
+            flex-shrink: 0;
+        }
+        .form-row input {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        #pdfcompanion-server-host {
+            width: 180px;
+        }
+        #pdfcompanion-server-port {
+            width: 80px;
+        }
+        .button-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        button {
+            padding: 8px 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: #f5f5f5;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        button:hover {
+            background: #e5e5e5;
+        }
+        #pdfcompanion-status {
+            margin-top: 15px;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <h2>PDF Companion Settings</h2>
+
+    <div class="form-row">
+        <label for="pdfcompanion-server-host">Server Host:</label>
+        <input type="text" id="pdfcompanion-server-host" placeholder="10.0.0.44" />
+    </div>
+
+    <div class="form-row">
+        <label for="pdfcompanion-server-port">Server Port:</label>
+        <input type="number" id="pdfcompanion-server-port" placeholder="8451" />
+    </div>
+
+    <div class="button-row">
+        <button id="pdfcompanion-test-btn">Test Connection</button>
+        <button id="pdfcompanion-save-btn">Save</button>
+    </div>
+
+    <div id="pdfcompanion-status"></div>
+
+    <script src="options.js"></script>
+</body>
+</html>

@@ -5,6 +5,9 @@ if (typeof Zotero === 'undefined') {
     Zotero = {};
 }
 
+// Import Services for dialogs
+var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+
 function _create(doc, name) {
     const elt =
         Zotero.platformMajorVersion >= 102
@@ -24,30 +27,59 @@ PdfCompanion = {
     notifierID: null,
     pendingItems: new Set(),
     timer: null,
-    // Environment: "dev" or "prod"
-    env: "dev",
 
-    endpoints: {
-        dev:  "http://10.0.0.13:8451",
-        prod: "http://10.0.0.44:8451"
+    // Default values (used if prefs not set)
+    defaultHost: "10.0.0.44",
+    defaultPort: 8451,
+
+    getServerHost() {
+        try {
+            return Zotero.Prefs.get("extensions.pdfcompanion.serverHost", true) || this.defaultHost;
+        } catch (e) {
+            return this.defaultHost;
+        }
+    },
+
+    getServerPort() {
+        try {
+            return Zotero.Prefs.get("extensions.pdfcompanion.serverPort", true) || this.defaultPort;
+        } catch (e) {
+            return this.defaultPort;
+        }
     },
 
     get config() {
         return {
-            apiUrl: this.endpoints[this.env],
+            apiUrl: "http://" + this.getServerHost() + ":" + this.getServerPort(),
             useScihub: true,
             triggerDelay: 3000
         };
     },
 
+    logBuffer: [],
+
     log(msg) {
         Zotero.debug("PDF Companion: " + msg);
+        // Buffer logs for remote debugging
+        this.logBuffer.push(new Date().toISOString() + " - " + msg);
+        // Keep only last 100 entries
+        if (this.logBuffer.length > 100) this.logBuffer.shift();
+    },
+
+    getLogDump() {
+        return this.logBuffer.join("\n");
     },
 
     init({ id, version, rootURI } = {}) {
         this.id = id;
         this.version = version;
         this.rootURI = rootURI;
+
+        // Log startup config
+        this.log("=== PDF Companion " + version + " starting ===");
+        this.log("Host: " + this.getServerHost());
+        this.log("Port: " + this.getServerPort());
+        this.log("API URL: " + this.config.apiUrl);
 
         // Register notifier for auto-detection of new items
         this.notifierID = Zotero.Notifier.registerObserver(
@@ -67,6 +99,8 @@ PdfCompanion = {
         let submenu = _create(doc, "menu");
         submenu.id = "zotero-itemmenu-pdfcompanion-menu";
         submenu.setAttribute("label", "PDF Companion");
+        submenu.setAttribute("image", this.rootURI + "skin/icon16.png");
+        submenu.classList.add("menuitem-iconic");
 
         let submenuPopup = _create(doc, "menupopup");
         submenuPopup.id = "zotero-itemmenu-pdfcompanion-popup";
@@ -106,6 +140,8 @@ PdfCompanion = {
         let toolsSubmenu = _create(doc, "menu");
         toolsSubmenu.id = "menu_Tools-pdfcompanion-menu";
         toolsSubmenu.setAttribute("label", "PDF Companion");
+        toolsSubmenu.setAttribute("image", this.rootURI + "skin/icon16.png");
+        toolsSubmenu.classList.add("menuitem-iconic");
 
         let toolsSubmenuPopup = _create(doc, "menupopup");
         toolsSubmenuPopup.id = "menu_Tools-pdfcompanion-popup";
@@ -133,6 +169,29 @@ PdfCompanion = {
             PdfCompanion.enrichMetadataForSelected();
         });
         toolsSubmenuPopup.appendChild(toolsEnrichMeta);
+
+        // Separator
+        let separator = _create(doc, "menuseparator");
+        separator.id = "menu_Tools-pdfcompanion-separator";
+        toolsSubmenuPopup.appendChild(separator);
+
+        // Option: Test Connection
+        let toolsTestConn = _create(doc, "menuitem");
+        toolsTestConn.id = "menu_Tools-pdfcompanion-test";
+        toolsTestConn.setAttribute("label", "Test Connection");
+        toolsTestConn.addEventListener("command", () => {
+            PdfCompanion.testConnection();
+        });
+        toolsSubmenuPopup.appendChild(toolsTestConn);
+
+        // Option: Show Logs
+        let toolsShowLogs = _create(doc, "menuitem");
+        toolsShowLogs.id = "menu_Tools-pdfcompanion-logs";
+        toolsShowLogs.setAttribute("label", "Show Logs");
+        toolsShowLogs.addEventListener("command", () => {
+            PdfCompanion.showLogs();
+        });
+        toolsSubmenuPopup.appendChild(toolsShowLogs);
 
         toolsSubmenu.appendChild(toolsSubmenuPopup);
         doc.getElementById("menu_ToolsPopup").appendChild(toolsSubmenu);
@@ -261,56 +320,51 @@ PdfCompanion = {
         let stepItem = new pw.ItemProgress(stepIcon, "Connecting to server...");
 
         try {
-            // Use XMLHttpRequest for SSE streaming (more compatible than fetch)
-            let url = this.config.apiUrl + "/audit/recover-pdf-stream?key=" + encodeURIComponent(item.key) + "&use_scihub=" + this.config.useScihub;
-
-            let finalResult = await new Promise((resolve, reject) => {
-                let xhr = new XMLHttpRequest();
-                let lastIndex = 0;
-                let result = null;
-
-                xhr.open("GET", url, true);
-                xhr.setRequestHeader("Accept", "text/event-stream");
-
-                xhr.onprogress = () => {
-                    let newData = xhr.responseText.substring(lastIndex);
-                    lastIndex = xhr.responseText.length;
-
-                    let lines = newData.split("\n");
-                    for (let line of lines) {
-                        if (line.startsWith("data: ")) {
-                            try {
-                                let data = JSON.parse(line.substring(6));
-                                this.log("Progress: " + data.step + " - " + data.message);
-
-                                // Update progress window
-                                stepItem.setText(data.message);
-
-                                if (data.step === "complete" || data.step === "error") {
-                                    result = data;
-                                }
-                            } catch (e) {
-                                // Ignore JSON parse errors
-                            }
-                        }
-                    }
-                };
-
-                xhr.onload = () => resolve(result);
-                xhr.onerror = () => reject(new Error("Connection failed"));
-                xhr.ontimeout = () => reject(new Error("Timeout"));
-                xhr.timeout = 120000;
-                xhr.send();
+            let url = this.config.apiUrl + "/audit/recover-pdf";
+            let body = JSON.stringify({
+                key: item.key,
+                use_scihub: this.config.useScihub
             });
+
+            this.log("Request URL: " + url);
+            this.log("Request body: " + body);
+
+            stepItem.setText("Searching for PDF...");
+
+            let response = await Zotero.HTTP.request("POST", url, {
+                headers: { "Content-Type": "application/json" },
+                body: body,
+                timeout: 120000
+            });
+
+            this.log("Response status: " + response.status);
+            this.log("Response body: " + response.responseText);
 
             pw.close();
 
-            if (finalResult && finalResult.status === "success") {
-                this.showNotification("PDF Found!", this.getSourceLabel(finalResult.source) + "\n" + title.substring(0, 40));
-            } else if (finalResult) {
-                this.showNotification("PDF Not Found", title.substring(0, 40) + "\n" + (finalResult.message || "Not available") + "\n\nUse 'Attach local PDF' to add manually.");
+            let result = JSON.parse(response.responseText);
+
+            // Get the PDF URL from response (either dropbox_url or pdf_url)
+            let pdfUrl = result.dropbox_url || result.pdf_url;
+
+            // Update URL field if we have a PDF URL
+            if (pdfUrl) {
+                try {
+                    item.setField("url", pdfUrl);
+                    await item.saveTx();
+                    this.log("Updated URL field with: " + pdfUrl);
+                } catch (e) {
+                    this.log("Failed to update URL field: " + e);
+                }
+            }
+
+            if (result.success) {
+                this.showNotification("PDF Found!", this.getSourceLabel(result.source) + "\n" + title.substring(0, 40));
+            } else if (pdfUrl) {
+                // PDF already attached
+                this.showNotification("PDF Already Attached", title.substring(0, 40) + "\n\nPDF is already available.");
             } else {
-                this.showNotification("Error", "No response from server");
+                this.showNotification("PDF Not Found", title.substring(0, 40) + "\n" + (result.error || "Not available") + "\n\nUse 'Attach local PDF' to add manually.");
             }
 
         } catch (e) {
@@ -549,6 +603,49 @@ PdfCompanion = {
             "crossref": "Source: CrossRef"
         };
         return labels[src] || ("Source: " + src);
+    },
+
+    async testConnection() {
+        let host = this.getServerHost();
+        let port = this.getServerPort();
+        let url = this.config.apiUrl + "/health";
+
+        this.log("Testing connection to: " + url);
+        this.log("Host from prefs: " + host);
+        this.log("Port from prefs: " + port);
+
+        // Show config info
+        let configInfo = "Host: " + host + "\nPort: " + port + "\nURL: " + url;
+        this.showNotification("PDF Companion Config", configInfo);
+
+        try {
+            this.log("Making HTTP request...");
+            let response = await Zotero.HTTP.request("GET", url, { timeout: 5000 });
+            this.log("Response received: " + response.status);
+            let data = JSON.parse(response.responseText);
+
+            if (data.status === "healthy") {
+                this.showNotification("Connection OK!",
+                    "Server: " + data.skill + " v" + data.version + "\n" +
+                    "URL: " + url);
+            } else {
+                this.showNotification("Connection Warning",
+                    "Server responded but status: " + data.status + "\n" +
+                    "URL: " + url);
+            }
+        } catch (e) {
+            this.log("Connection test failed: " + e);
+            this.showNotification("Connection Failed",
+                "Error: " + (e.message || String(e)) + "\n" +
+                "URL: " + url);
+        }
+    },
+
+    showLogs() {
+        let logs = this.getLogDump();
+        if (!logs) logs = "(no logs yet)";
+        // Show in alert dialog for easy copy
+        Services.prompt.alert(null, "PDF Companion Logs", logs);
     },
 
     showNotification(headline, msg) {

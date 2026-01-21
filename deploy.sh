@@ -28,7 +28,7 @@ echo ""
 echo "[1/3] Building XPI..."
 cd "$PLUGIN_DIR"
 rm -f pdf-companion-*.xpi
-zip -r "$XPI_NAME" manifest.json bootstrap.js pdfcompanion.js skin/ -x "*.git*"
+zip -r "$XPI_NAME" manifest.json bootstrap.js pdfcompanion.js prefs.js options.xhtml options.js skin/ -x "*.git*"
 echo "      Created: $XPI_NAME"
 
 # Get SSH password from vault

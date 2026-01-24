@@ -49,7 +49,7 @@ sshpass -p "$SSH_PASS" scp -o StrictHostKeyChecking=no \
 # Update extensions.json cache
 echo "[4/4] Updating Zotero extensions.json..."
 sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" \
-    "powershell -Command \"\$json = Get-Content '$REMOTE_PATH/../extensions.json' -Raw | ConvertFrom-Json; \$addon = \$json.addons | Where-Object { \$_.id -eq '$PLUGIN_ID' }; if (\$addon) { \$addon.version = '$VERSION'; \$addon.defaultLocale.description = 'Auto PDF fetch for Zotero (v$VERSION)'; \$json | ConvertTo-Json -Depth 10 | Set-Content '$REMOTE_PATH/../extensions.json' -Encoding UTF8 }\"" 2>/dev/null
+    "powershell -Command \"\$json = Get-Content '$REMOTE_PATH/../extensions.json' -Raw | ConvertFrom-Json; \$addon = \$json.addons | Where-Object { \$_.id -eq '$PLUGIN_ID' }; if (\$addon) { \$addon.version = '$VERSION'; \$addon.defaultLocale.description = 'Auto PDF fetch for Zotero (v$VERSION)'; \$addon.targetApplications[0].maxVersion = '8.0.*'; \$json | ConvertTo-Json -Depth 20 | Set-Content '$REMOTE_PATH/../extensions.json' -Encoding UTF8 }\"" 2>/dev/null
 
 # Verify
 REMOTE_SIZE=$(sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" \

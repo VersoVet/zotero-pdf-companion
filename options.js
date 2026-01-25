@@ -1,8 +1,17 @@
-// PDF Companion Options - Zotero 7
+// PDF Companion Options - Zotero 7/8
 
-// Use Mozilla Services for preferences
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+// Use Mozilla Services for preferences - compatible with Zotero 7 and 8
+let Services;
+try {
+    // Zotero 8 / Firefox 140+
+    Services = ChromeUtils.importESModule("resource://gre/modules/Services.sys.mjs").Services;
+} catch (e) {
+    // Zotero 7 / Firefox 115
+    Services = ChromeUtils.import("resource://gre/modules/Services.jsm").Services;
+}
+
 const PREF_BRANCH = "extensions.pdfcompanion.";
+const PAPER_READER_PORT = 8462;
 
 function getPref(key, defaultValue) {
     try {
@@ -15,7 +24,9 @@ function getPref(key, defaultValue) {
         } else if (type === Services.prefs.PREF_BOOL) {
             return branch.getBoolPref(key);
         }
-    } catch (e) {}
+    } catch (e) {
+        console.log("getPref error:", e);
+    }
     return defaultValue;
 }
 
@@ -31,6 +42,7 @@ function setPref(key, value) {
         }
         return true;
     } catch (e) {
+        console.log("setPref error:", e);
         return false;
     }
 }
@@ -44,7 +56,8 @@ function onLoad() {
     document.getElementById("pdfcompanion-server-port").value = port;
 
     // Add event listeners
-    document.getElementById("pdfcompanion-test-btn").addEventListener("click", testConnection);
+    document.getElementById("pdfcompanion-test-zm-btn").addEventListener("click", testZoteroManager);
+    document.getElementById("pdfcompanion-test-pr-btn").addEventListener("click", testPaperReader);
     document.getElementById("pdfcompanion-save-btn").addEventListener("click", savePrefs);
 
     setStatus("Ready", "#666");
@@ -74,7 +87,7 @@ function savePrefs() {
     }
 }
 
-function testConnection() {
+function testZoteroManager() {
     let host = document.getElementById("pdfcompanion-server-host").value.trim();
     let port = document.getElementById("pdfcompanion-server-port").value;
 
@@ -83,10 +96,27 @@ function testConnection() {
         return;
     }
 
-    setStatus("Testing connection...", "#666");
+    setStatus("Testing Zotero Manager...", "#666");
 
     let url = "http://" + host + ":" + port + "/health";
+    testService(url, "Zotero Manager");
+}
 
+function testPaperReader() {
+    let host = document.getElementById("pdfcompanion-server-host").value.trim();
+
+    if (!host) {
+        setStatus("Error: Please enter host", "#c00");
+        return;
+    }
+
+    setStatus("Testing Paper Reader...", "#666");
+
+    let url = "http://" + host + ":" + PAPER_READER_PORT + "/health";
+    testService(url, "Paper Reader");
+}
+
+function testService(url, serviceName) {
     let xhr = new XMLHttpRequest();
     xhr.open("GET", url, true);
     xhr.timeout = 5000;
@@ -95,21 +125,23 @@ function testConnection() {
         try {
             let data = JSON.parse(xhr.responseText);
             if (data.status === "healthy") {
-                setStatus("Connection OK - " + data.skill + " v" + data.version, "#090");
+                let version = data.version || "unknown";
+                let skill = data.skill || serviceName;
+                setStatus("✓ " + skill + " v" + version + " - Connected", "#090");
             } else {
-                setStatus("Server responded but status is: " + data.status, "#f90");
+                setStatus("⚠ " + serviceName + ": status = " + data.status, "#f90");
             }
         } catch (e) {
-            setStatus("Invalid response from server", "#c00");
+            setStatus("✗ " + serviceName + ": Invalid response", "#c00");
         }
     };
 
     xhr.onerror = function() {
-        setStatus("Connection failed - network error", "#c00");
+        setStatus("✗ " + serviceName + ": Network error", "#c00");
     };
 
     xhr.ontimeout = function() {
-        setStatus("Connection failed - timeout", "#c00");
+        setStatus("✗ " + serviceName + ": Timeout", "#c00");
     };
 
     xhr.send();

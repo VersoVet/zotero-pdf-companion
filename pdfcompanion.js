@@ -123,9 +123,7 @@ PdfCompanion = {
                 { id: 'local', label: 'Joindre un PDF', action: () => this.attachLocalPdfForSelected() },
                 { id: 'replace', label: 'Remplacer un PDF', action: () => this.replacePdfForSelected() },
                 { id: 'enrich', label: 'Enrich metadata', action: () => this.enrichMetadataForSelected() },
-                { id: 'showfiches', label: 'Afficher les lectures', action: () => this.showReadingCards() },
-                { id: 'sep', separator: true },
-                { id: 'copyid', label: 'Copy Item ID', action: () => this.copyItemId() }
+                { id: 'showfiches', label: 'Afficher les lectures', action: () => this.showReadingCards() }
             ];
 
             for (let item of items) {

@@ -76,15 +76,13 @@ PdfCompanion = {
 
             // Menu items
             let items = [
-                { id: 'fetch', label: 'Fetch PDF (auto)', action: () => this.fetchPdfForSelected() },
-                { id: 'local', label: 'Attach local PDF...', action: () => this.attachLocalPdfForSelected() },
-                { id: 'replace', label: 'Replace PDF...', action: () => this.replacePdfForSelected() },
+                { id: 'analyze', label: 'Lire l\'article', action: () => this.summarizeForSelected() },
+                { id: 'fetch', label: 'Télécharger le PDF', action: () => this.fetchPdfForSelected() },
+                { id: 'local', label: 'Joindre un PDF', action: () => this.attachLocalPdfForSelected() },
+                { id: 'replace', label: 'Remplacer un PDF', action: () => this.replacePdfForSelected() },
                 { id: 'enrich', label: 'Enrich metadata', action: () => this.enrichMetadataForSelected() },
-                { id: 'analyze', label: 'Analyze PDF (Paper Reader)', action: () => this.summarizeForSelected() },
-                { id: 'sendlo', label: 'Send to LibreOffice', action: () => this.sendToLibreOffice() },
+                { id: 'showfiches', label: 'Afficher les lectures', action: () => this.showReadingCards() },
                 { id: 'sep', separator: true },
-                { id: 'shownotes', label: 'Show Notes', action: () => this.showFormattedNotes() },
-                { id: 'showfiches', label: 'Fiches de lecture', action: () => this.showReadingCards() },
                 { id: 'copyid', label: 'Copy Item ID', action: () => this.copyItemId() },
                 { id: 'test', label: 'Test Connection', action: () => this.testConnection() },
                 { id: 'logs', label: 'Show Logs', action: () => this.showLogs() }
@@ -120,15 +118,13 @@ PdfCompanion = {
             menupopup.id = 'pdfcompanion-context-popup';
 
             let items = [
-                { id: 'fetch', label: 'Fetch PDF (auto)', action: () => this.fetchPdfForSelected() },
-                { id: 'local', label: 'Attach local PDF...', action: () => this.attachLocalPdfForSelected() },
-                { id: 'replace', label: 'Replace PDF...', action: () => this.replacePdfForSelected() },
+                { id: 'analyze', label: 'Lire l\'article', action: () => this.summarizeForSelected() },
+                { id: 'fetch', label: 'Télécharger le PDF', action: () => this.fetchPdfForSelected() },
+                { id: 'local', label: 'Joindre un PDF', action: () => this.attachLocalPdfForSelected() },
+                { id: 'replace', label: 'Remplacer un PDF', action: () => this.replacePdfForSelected() },
                 { id: 'enrich', label: 'Enrich metadata', action: () => this.enrichMetadataForSelected() },
-                { id: 'analyze', label: 'Analyze PDF (Paper Reader)', action: () => this.summarizeForSelected() },
-                { id: 'sendlo', label: 'Send to LibreOffice', action: () => this.sendToLibreOffice() },
+                { id: 'showfiches', label: 'Afficher les lectures', action: () => this.showReadingCards() },
                 { id: 'sep', separator: true },
-                { id: 'shownotes', label: 'Show Notes', action: () => this.showFormattedNotes() },
-                { id: 'showfiches', label: 'Fiches de lecture', action: () => this.showReadingCards() },
                 { id: 'copyid', label: 'Copy Item ID', action: () => this.copyItemId() }
             ];
 
@@ -782,44 +778,6 @@ PdfCompanion = {
         this.showNotification("Timeout", "Analysis taking too long.\nCheck Paper Reader dashboard.");
     },
 
-    // === SEND TO LIBREOFFICE ===
-    async sendToLibreOffice() {
-        let items = Zotero.getActiveZoteroPane().getSelectedItems();
-        if (!items || items.length === 0) {
-            this.showNotification("PDF Companion", "No items selected");
-            return;
-        }
-        items = items.filter(item => !item.isAttachment() && !item.isNote());
-        if (items.length !== 1) {
-            this.showNotification("PDF Companion", "Please select exactly one item");
-            return;
-        }
-
-        let item = items[0];
-        let title = item.getField("title") || "Unknown";
-        let creators = item.getCreators() || [];
-        let authors = creators.filter(c => c.creatorType === "author").map(c => c.lastName || c.name).join(", ");
-        let date = item.getField("date") || "";
-        let year = date ? date.substring(0, 4) : "";
-
-        try {
-            let response = await Zotero.HTTP.request("POST", "http://10.0.0.13:8461/writer/current-reference", {
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ key: item.key, title: title, authors: authors, year: year, doi: item.getField("DOI") || "" }),
-                timeout: 10000
-            });
-
-            let result = JSON.parse(response.responseText);
-            if (result.status === "ok") {
-                this.showNotification("Sent to LibreOffice!", title.substring(0, 35));
-            } else {
-                this.showNotification("Send Failed", result.message || "Unknown error");
-            }
-        } catch (e) {
-            this.showNotification("Connection Error", e.message || "Could not reach article-writer");
-        }
-    },
-
     // === UTILITIES ===
     async testConnection() {
         let results = [];
@@ -1244,6 +1202,12 @@ PdfCompanion = {
 
         let title = item.getField("title") || "Unknown";
 
+        // Créer le popup de progression
+        let pw = new Zotero.ProgressWindow({ closeOnClick: false });
+        pw.changeHeadline("Lectures - " + title.substring(0, 25));
+        pw.show();
+        let stepItem = new pw.ItemProgress("chrome://zotero/skin/spinner-16px.png", "Recherche des fiches...");
+
         // Récupérer les attachments via API
         try {
             let url = this.config.apiUrl + "/item/" + item.key + "/children";
@@ -1258,46 +1222,73 @@ PdfCompanion = {
             });
 
             if (fiches.length === 0) {
-                this.showNotification("PDF Companion",
-                    "Aucune fiche de lecture.\nUtilisez 'Analyze PDF (Paper Reader)' pour en créer.");
+                stepItem.setIcon("chrome://zotero/skin/cross.png");
+                stepItem.setText("Aucune fiche trouvée");
+                pw.addDescription("Utilisez 'Lire l'article' pour créer une fiche.");
+                pw.startCloseTimer(4000);
                 return;
             }
 
-            // Récupérer le contenu de chaque fiche
+            // Notifier qu'on a trouvé des fiches
+            stepItem.setIcon("chrome://zotero/skin/tick.png");
+            stepItem.setText(fiches.length + " fiche(s) trouvée(s)");
+
+            // Récupérer le contenu de chaque fiche avec progression
             let ficheContents = [];
-            for (let fiche of fiches) {
+            for (let i = 0; i < fiches.length; i++) {
+                let fiche = fiches[i];
+                let ficheDate = fiche.data.dateAdded ? new Date(fiche.data.dateAdded).toLocaleDateString('fr-FR') : '';
+
+                // Ajouter une ligne de progression pour cette fiche
+                let ficheProgress = new pw.ItemProgress("chrome://zotero/skin/spinner-16px.png",
+                    "Fiche " + (i + 1) + " (" + ficheDate + ") - Téléchargement...");
+
                 try {
                     let dropboxUrl = fiche.data.url.replace("dl=0", "dl=1");
                     if (!dropboxUrl.includes("dl=1")) {
                         dropboxUrl += (dropboxUrl.includes("?") ? "&" : "?") + "dl=1";
                     }
 
+                    ficheProgress.setText("Fiche " + (i + 1) + " (" + ficheDate + ") - Téléchargement...");
+
                     let contentResponse = await Zotero.HTTP.request("GET", dropboxUrl, {
                         timeout: 15000,
                         responseType: "text"
                     });
+
+                    ficheProgress.setText("Fiche " + (i + 1) + " (" + ficheDate + ") - Formatage MD...");
 
                     ficheContents.push({
                         title: fiche.data.title,
                         content: contentResponse.responseText,
                         date: fiche.data.dateAdded
                     });
+
+                    ficheProgress.setIcon("chrome://zotero/skin/tick.png");
+                    ficheProgress.setText("Fiche " + (i + 1) + " (" + ficheDate + ") ✓");
+
                 } catch (e) {
                     this.log("Failed to fetch fiche: " + e);
+                    ficheProgress.setIcon("chrome://zotero/skin/cross.png");
+                    ficheProgress.setText("Fiche " + (i + 1) + " - Erreur");
                 }
             }
 
             if (ficheContents.length === 0) {
-                this.showNotification("Erreur", "Impossible de récupérer les fiches");
+                pw.addDescription("Impossible de récupérer les fiches");
+                pw.startCloseTimer(4000);
                 return;
             }
 
-            // Afficher
+            // Fermer le popup et afficher
+            pw.close();
             this.displayReadingCards(item, ficheContents);
 
         } catch (e) {
             this.log("showReadingCards error: " + e);
-            this.showNotification("Erreur", e.message || "Connexion échouée");
+            stepItem.setIcon("chrome://zotero/skin/cross.png");
+            stepItem.setText("Erreur: " + (e.message || "Connexion échouée"));
+            pw.startCloseTimer(4000);
         }
     },
 

@@ -427,6 +427,8 @@ PdfCompanion = {
 
             if (response.response && response.response.success) {
                 this.showNotification("PDF Attached!", title.substring(0, 40));
+                // Sync to pull the new attachment into Zotero
+                try { Zotero.Sync.Runner.sync(); } catch (e) {}
             } else {
                 this.showNotification("Upload Failed", response.response?.error || "Unknown error");
             }

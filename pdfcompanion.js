@@ -35,7 +35,7 @@ PdfCompanion = {
             apiUrl: "http://" + this.getServerHost() + ":" + this.getServerPort(),
             paperReaderUrl: "http://" + this.getServerHost() + ":" + this.paperReaderPort,
             useScihub: true,
-            triggerDelay: 3000
+            triggerDelay: 10000
         };
     },
 
@@ -228,6 +228,15 @@ PdfCompanion = {
         }
     },
 
+    async itemHasPdfAttachment(item) {
+        let attachmentIDs = item.getAttachments();
+        for (let id of attachmentIDs) {
+            let att = await Zotero.Items.getAsync(id);
+            if (att && att.attachmentContentType === "application/pdf") return true;
+        }
+        return false;
+    },
+
     async processPendingItems() {
         let ids = Array.from(this.pendingItems);
         this.pendingItems.clear();
@@ -237,7 +246,16 @@ PdfCompanion = {
                 if (!item || item.isAttachment() || item.isNote()) continue;
                 let itemType = Zotero.ItemTypes.getName(item.itemTypeID);
                 if (!["journalArticle", "conferencePaper", "preprint", "book", "thesis"].includes(itemType)) continue;
-                await this.recoverPdf(item);
+                let hasPdf = await this.itemHasPdfAttachment(item);
+                let title = item.getField("title") || "Unknown";
+                if (hasPdf) {
+                    this.log("PDF already attached for: " + title + " → enrich only");
+                    await this.enrichMetadata(item);
+                } else {
+                    this.log("No PDF for: " + title + " → recover + enrich");
+                    await this.recoverPdf(item);
+                    await this.enrichMetadata(item);
+                }
             } catch (e) {
                 this.log("processPendingItems error: " + e);
             }
@@ -612,9 +630,76 @@ PdfCompanion = {
             return;
         }
         items = items.filter(item => !item.isAttachment() && !item.isNote());
-        for (let item of items) {
-            await this.enrichMetadata(item);
+        if (items.length === 0) {
+            this.showNotification("PDF Companion", "No valid items selected");
+            return;
         }
+
+        // Single item: existing behavior
+        if (items.length === 1) {
+            await this.enrichMetadata(items[0]);
+            return;
+        }
+
+        // Batch: single ProgressWindow
+        let total = items.length;
+        let pw = new Zotero.ProgressWindow({ closeOnClick: false });
+        pw.changeHeadline("Enrichissement - 0/" + total);
+        pw.show();
+        let stepItem = new pw.ItemProgress("chrome://zotero/skin/spinner-16px.png", "Démarrage...");
+
+        let enriched = 0;
+        let failed = 0;
+
+        for (let i = 0; i < items.length; i++) {
+            let item = items[i];
+            let title = item.getField("title") || "Unknown";
+            pw.changeHeadline("Enrichissement - " + (i + 1) + "/" + total);
+            stepItem.setText(title.substring(0, 50));
+
+            try {
+                let url = this.config.apiUrl + "/enrich/item-stream/" + encodeURIComponent(item.key);
+                let finalResult = await new Promise((resolve, reject) => {
+                    let xhr = new XMLHttpRequest();
+                    let lastIndex = 0;
+                    let result = null;
+                    xhr.open("GET", url, true);
+                    xhr.setRequestHeader("Accept", "text/event-stream");
+                    xhr.onprogress = () => {
+                        let newData = xhr.responseText.substring(lastIndex);
+                        lastIndex = xhr.responseText.length;
+                        for (let line of newData.split("\n")) {
+                            if (line.startsWith("data: ")) {
+                                try {
+                                    let data = JSON.parse(line.substring(6));
+                                    stepItem.setText((i + 1) + "/" + total + " - " + (data.message || data.step));
+                                    if (data.step === "complete" || data.step === "error") result = data;
+                                } catch (e) {}
+                            }
+                        }
+                    };
+                    xhr.onload = () => resolve(result);
+                    xhr.onerror = () => reject(new Error("Connection failed"));
+                    xhr.ontimeout = () => reject(new Error("Timeout"));
+                    xhr.timeout = 120000;
+                    xhr.send();
+                });
+
+                if (finalResult && finalResult.status === "success") {
+                    enriched++;
+                    await item.reload();
+                } else {
+                    failed++;
+                }
+            } catch (e) {
+                failed++;
+                this.log("Batch enrich error: " + e);
+            }
+        }
+
+        pw.close();
+        this.showNotification("Enrichissement terminé",
+            enriched + " enrichis, " + failed + " échecs sur " + total);
     },
 
     async enrichMetadata(item) {

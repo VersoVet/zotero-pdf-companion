@@ -156,6 +156,7 @@ PdfCompanion = {
             menupopup.id = 'pdfcompanion-collection-popup';
 
             let items = [
+                { id: 'import-pdfs', label: 'Importer des PDFs', action: () => this.importPdfsToCollection() },
                 { id: 'maintain-collection', label: 'Maintenance collection', action: () => this.analyzeCollection() },
                 { id: 'show-collection-fiches', label: 'Voir fiches de la collection', action: () => this.showCollectionFiches() }
             ];
@@ -1184,6 +1185,141 @@ PdfCompanion = {
         }
 
         this.showNotification("PDF Companion", "Fonctionnalité en développement...\nUtilisez 'Fiches de lecture' sur chaque article.");
+    },
+
+    // === IMPORT PDFs TO COLLECTION ===
+    async pickMultiplePdfFiles() {
+        const { FilePicker } = ChromeUtils.importESModule("chrome://zotero/content/modules/filePicker.mjs");
+        let fp = new FilePicker();
+        fp.init(Zotero.getMainWindow(), "Sélectionner des PDFs à importer", fp.modeOpenMultiple);
+        fp.appendFilter("PDF Files", "*.pdf");
+        let result = await fp.show();
+        if (result !== fp.returnOK) return null;
+        return fp.files;
+    },
+
+    async ingestPdfFile(filePath) {
+        let file = Zotero.File.pathToFile(filePath);
+        if (!file.exists()) {
+            throw new Error("Fichier introuvable: " + filePath);
+        }
+
+        let fileData = await Zotero.File.getBinaryContentsAsync(file);
+        let fileBytes = new Uint8Array(fileData.length);
+        for (let i = 0; i < fileData.length; i++) {
+            fileBytes[i] = fileData.charCodeAt(i) & 0xff;
+        }
+
+        let boundary = "----ZoteroPdfCompanion" + Date.now();
+        let body = "--" + boundary + "\r\n" +
+            'Content-Disposition: form-data; name="file"; filename="' + file.leafName + '"\r\n' +
+            "Content-Type: application/pdf\r\n\r\n";
+
+        let encoder = new TextEncoder();
+        let header = encoder.encode(body);
+        let footer = encoder.encode("\r\n--" + boundary + "--\r\n");
+        let bodyArray = new Uint8Array(header.length + fileBytes.length + footer.length);
+        bodyArray.set(header, 0);
+        bodyArray.set(fileBytes, header.length);
+        bodyArray.set(footer, header.length + fileBytes.length);
+
+        let url = this.config.apiUrl + "/ingest/pdf";
+        this.log("POST " + url + " (" + file.leafName + ", " + fileBytes.length + " bytes)");
+
+        let response = await Zotero.HTTP.request("POST", url, {
+            headers: { "Content-Type": "multipart/form-data; boundary=" + boundary },
+            body: bodyArray,
+            responseType: "json",
+            timeout: 180000
+        });
+
+        return response.response;
+    },
+
+    async addItemToCollection(itemKey, collectionKey) {
+        let url = this.config.apiUrl + "/collections/" +
+            encodeURIComponent(collectionKey) + "/items/" +
+            encodeURIComponent(itemKey);
+        this.log("POST " + url);
+        let response = await Zotero.HTTP.request("POST", url, { timeout: 15000 });
+        return JSON.parse(response.responseText);
+    },
+
+    async importPdfsToCollection() {
+        let collection = this.getSelectedCollection();
+        if (!collection) {
+            this.showNotification("PDF Companion", "Veuillez sélectionner une collection");
+            return;
+        }
+
+        let files = await this.pickMultiplePdfFiles();
+        if (!files) return;
+
+        // Collect file paths from the iterator
+        let filePaths = [];
+        for (let f of files) {
+            filePaths.push(f);
+        }
+        if (filePaths.length === 0) return;
+
+        this.log("Importing " + filePaths.length + " PDFs into collection: " + collection.name);
+
+        let pw = new Zotero.ProgressWindow({ closeOnClick: false });
+        pw.changeHeadline("Import PDFs - " + collection.name.substring(0, 25));
+        pw.show();
+
+        let imported = 0;
+        let failed = 0;
+        let progressItems = [];
+
+        for (let i = 0; i < filePaths.length; i++) {
+            let filePath = filePaths[i];
+            let file = Zotero.File.pathToFile(filePath);
+            let filename = file.leafName;
+
+            let pi = new pw.ItemProgress("chrome://zotero/skin/spinner-16px.png",
+                (i + 1) + "/" + filePaths.length + " - " + filename + " - Ingestion...");
+            progressItems.push(pi);
+
+            try {
+                let result = await this.ingestPdfFile(filePath);
+
+                if (result && result.success && result.item_key) {
+                    pi.setText((i + 1) + "/" + filePaths.length + " - " + filename + " - Ajout collection...");
+
+                    try {
+                        await this.addItemToCollection(result.item_key, collection.key);
+                    } catch (e) {
+                        this.log("addItemToCollection warning: " + e);
+                        // Non-blocking: item was created, collection assignment may fail
+                    }
+
+                    let shortTitle = (result.metadata && result.metadata.title)
+                        ? result.metadata.title.substring(0, 40)
+                        : filename;
+                    pi.setIcon("chrome://zotero/skin/tick.png");
+                    pi.setText((i + 1) + "/" + filePaths.length + " ✓ " + shortTitle);
+                    imported++;
+                } else {
+                    let errMsg = (result && result.error) ? result.error : "Échec ingestion";
+                    pi.setIcon("chrome://zotero/skin/cross.png");
+                    pi.setText((i + 1) + "/" + filePaths.length + " ✗ " + filename + " - " + errMsg);
+                    failed++;
+                }
+            } catch (e) {
+                this.log("Import PDF error: " + e);
+                pi.setIcon("chrome://zotero/skin/cross.png");
+                pi.setText((i + 1) + "/" + filePaths.length + " ✗ " + filename + " - " + (e.message || "Erreur"));
+                failed++;
+            }
+        }
+
+        pw.addDescription("Terminé: " + imported + " importé(s), " + failed + " échec(s)");
+        pw.startCloseTimer(5000);
+
+        if (imported > 0) {
+            try { Zotero.Sync.Runner.sync(); } catch (e) {}
+        }
     },
 
     // === READING CARDS (FICHES DE LECTURE) ===

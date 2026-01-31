@@ -158,7 +158,8 @@ PdfCompanion = {
             let items = [
                 { id: 'import-pdfs', label: 'Importer des PDFs', action: () => this.importPdfsToCollection() },
                 { id: 'maintain-collection', label: 'Maintenance collection', action: () => this.analyzeCollection() },
-                { id: 'show-collection-fiches', label: 'Voir fiches de la collection', action: () => this.showCollectionFiches() }
+                { id: 'synthesize-collection', label: 'Synthèse de la collection', action: () => this.synthesizeCollection() },
+                { id: 'read-syntheses', label: 'Lire les synthèses', action: () => this.showCollectionSyntheses() }
             ];
 
             for (let item of items) {
@@ -1262,16 +1263,6 @@ PdfCompanion = {
         }
     },
 
-    async showCollectionFiches() {
-        let collection = this.getSelectedCollection();
-        if (!collection) {
-            this.showNotification("PDF Companion", "Sélectionnez une collection");
-            return;
-        }
-
-        this.showNotification("PDF Companion", "Fonctionnalité en développement...\nUtilisez 'Fiches de lecture' sur chaque article.");
-    },
-
     // === IMPORT PDFs TO COLLECTION ===
     async pickMultiplePdfFiles() {
         const { FilePicker } = ChromeUtils.importESModule("chrome://zotero/content/modules/filePicker.mjs");
@@ -1407,163 +1398,40 @@ PdfCompanion = {
         }
     },
 
-    // === READING CARDS (FICHES DE LECTURE) ===
-    async showReadingCards() {
-        let items = Zotero.getActiveZoteroPane().getSelectedItems();
-        if (!items || items.length === 0) {
-            this.showNotification("PDF Companion", "Aucun item sélectionné");
-            return;
-        }
-
-        let item = items[0];
-        if (item.isAttachment() || item.isNote()) {
-            this.showNotification("PDF Companion", "Sélectionnez un article, pas un attachement");
-            return;
-        }
-
-        let title = item.getField("title") || "Unknown";
-
-        // Créer le popup de progression
-        let pw = new Zotero.ProgressWindow({ closeOnClick: false });
-        pw.changeHeadline("Lectures - " + title.substring(0, 25));
-        pw.show();
-        let stepItem = new pw.ItemProgress("chrome://zotero/skin/spinner-16px.png", "Recherche des fiches...");
-
-        // Récupérer les attachments via API
-        try {
-            let url = this.config.apiUrl + "/item/" + item.key + "/children";
-            let response = await Zotero.HTTP.request("GET", url, { timeout: 15000 });
-            let children = JSON.parse(response.responseText);
-
-            // Filtrer les fiches de lecture
-            let fiches = children.children.filter(c => {
-                let tags = (c.data.tags || []).map(t => t.tag);
-                return c.data.contentType === "text/markdown" &&
-                       (tags.includes("fiche") || tags.includes("paper-reader"));
-            });
-
-            if (fiches.length === 0) {
-                stepItem.setIcon("chrome://zotero/skin/cross.png");
-                stepItem.setText("Aucune fiche trouvée");
-                pw.addDescription("Utilisez 'Lire l'article' pour créer une fiche.");
-                pw.startCloseTimer(4000);
-                return;
-            }
-
-            // Notifier qu'on a trouvé des fiches
-            stepItem.setIcon("chrome://zotero/skin/tick.png");
-            stepItem.setText(fiches.length + " fiche(s) trouvée(s)");
-
-            // Récupérer le contenu de chaque fiche avec progression
-            let ficheContents = [];
-            for (let i = 0; i < fiches.length; i++) {
-                let fiche = fiches[i];
-                let ficheDate = fiche.data.dateAdded ? new Date(fiche.data.dateAdded).toLocaleDateString('fr-FR') : '';
-
-                // Ajouter une ligne de progression pour cette fiche
-                let ficheProgress = new pw.ItemProgress("chrome://zotero/skin/spinner-16px.png",
-                    "Fiche " + (i + 1) + " (" + ficheDate + ") - Téléchargement...");
-
-                try {
-                    let dropboxUrl = fiche.data.url.replace("dl=0", "dl=1");
-                    if (!dropboxUrl.includes("dl=1")) {
-                        dropboxUrl += (dropboxUrl.includes("?") ? "&" : "?") + "dl=1";
-                    }
-
-                    ficheProgress.setText("Fiche " + (i + 1) + " (" + ficheDate + ") - Téléchargement...");
-
-                    let contentResponse = await Zotero.HTTP.request("GET", dropboxUrl, {
-                        timeout: 15000,
-                        responseType: "text"
-                    });
-
-                    ficheProgress.setText("Fiche " + (i + 1) + " (" + ficheDate + ") - Formatage MD...");
-
-                    ficheContents.push({
-                        title: fiche.data.title,
-                        content: contentResponse.responseText,
-                        date: fiche.data.dateAdded
-                    });
-
-                    ficheProgress.setIcon("chrome://zotero/skin/tick.png");
-                    ficheProgress.setText("Fiche " + (i + 1) + " (" + ficheDate + ") ✓");
-
-                } catch (e) {
-                    this.log("Failed to fetch fiche: " + e);
-                    ficheProgress.setIcon("chrome://zotero/skin/cross.png");
-                    ficheProgress.setText("Fiche " + (i + 1) + " - Erreur");
-                }
-            }
-
-            if (ficheContents.length === 0) {
-                pw.addDescription("Impossible de récupérer les fiches");
-                pw.startCloseTimer(4000);
-                return;
-            }
-
-            // Fermer le popup et afficher
-            pw.close();
-            this.displayReadingCards(item, ficheContents);
-
-        } catch (e) {
-            this.log("showReadingCards error: " + e);
-            stepItem.setIcon("chrome://zotero/skin/cross.png");
-            stepItem.setText("Erreur: " + (e.message || "Connexion échouée"));
-            pw.startCloseTimer(4000);
-        }
+    // === MARKDOWN UTILITIES ===
+    mdToHtml(md) {
+        return md
+            // Headers
+            .replace(/^### (.*)$/gm, '<h3>$1</h3>')
+            .replace(/^## (.*)$/gm, '<h2>$1</h2>')
+            .replace(/^# (.*)$/gm, '<h1>$1</h1>')
+            // Bold/Italic
+            .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+            // Blockquotes
+            .replace(/^> (.*)$/gm, '<blockquote>$1</blockquote>')
+            // Lists
+            .replace(/^- (.*)$/gm, '<li>$1</li>')
+            // Links [text](url)
+            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+            // Paragraphs (double newlines)
+            .replace(/\n\n/g, '</p><p>')
+            // Single newlines in content
+            .replace(/\n/g, '<br>')
+            // Wrap lists
+            .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+            // Fix consecutive blockquotes
+            .replace(/<\/blockquote><br><blockquote>/g, '</blockquote><blockquote>');
     },
 
-    displayReadingCards(item, fiches) {
-        let title = item.getField("title") || "Unknown";
-        let authors = item.getCreators().map(c => (c.firstName || "") + " " + (c.lastName || c.name || "")).join(", ");
-        let year = item.getField("year") || "";
-
-        // Conversion Markdown → HTML simplifiée
-        function mdToHtml(md) {
-            return md
-                // Headers
-                .replace(/^### (.*)$/gm, '<h3>$1</h3>')
-                .replace(/^## (.*)$/gm, '<h2>$1</h2>')
-                .replace(/^# (.*)$/gm, '<h1>$1</h1>')
-                // Bold/Italic
-                .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-                // Blockquotes
-                .replace(/^> (.*)$/gm, '<blockquote>$1</blockquote>')
-                // Lists
-                .replace(/^- (.*)$/gm, '<li>$1</li>')
-                // Links [text](url)
-                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-                // Paragraphs (double newlines)
-                .replace(/\n\n/g, '</p><p>')
-                // Single newlines in content
-                .replace(/\n/g, '<br>')
-                // Wrap lists
-                .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
-                // Fix consecutive blockquotes
-                .replace(/<\/blockquote><br><blockquote>/g, '</blockquote><blockquote>');
-        }
-
-        let fichesHtml = fiches.map((fiche, idx) => {
-            let dateStr = fiche.date ? new Date(fiche.date).toLocaleDateString('fr-FR') : '';
-            return `
-                <div class="fiche">
-                    <div class="fiche-header">
-                        <span class="fiche-num">Fiche ${idx + 1}</span>
-                        <span class="fiche-date">${dateStr}</span>
-                    </div>
-                    <div class="fiche-content">
-                        <p>${mdToHtml(fiche.content)}</p>
-                    </div>
-                </div>
-            `;
-        }).join('');
+    displayMarkdown(title, subtitle, markdownContent) {
+        let bodyHtml = this.mdToHtml(markdownContent);
 
         let html = `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Fiches - ${this.escapeHtml(title)}</title>
+    <title>${this.escapeHtml(title)}</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -1583,39 +1451,18 @@ PdfCompanion = {
             margin-bottom: 25px;
         }
         .header h1 { margin: 0 0 10px 0; font-size: 1.4em; }
-        .header .meta { font-size: 0.9em; opacity: 0.9; }
-        .badge {
-            display: inline-block;
-            background: rgba(255,255,255,0.2);
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 0.8em;
-            margin-right: 10px;
-        }
-        .fiche {
+        .header .subtitle { font-size: 0.9em; opacity: 0.9; }
+        .content {
             background: white;
             border-radius: 10px;
-            margin-bottom: 25px;
+            padding: 30px 35px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-            overflow: hidden;
         }
-        .fiche-header {
-            background: #f0f4f0;
-            padding: 12px 20px;
-            border-bottom: 1px solid #e0e5e0;
-            display: flex;
-            justify-content: space-between;
-        }
-        .fiche-num { font-weight: 600; color: #2d5a27; }
-        .fiche-date { color: #888; font-size: 0.9em; }
-        .fiche-content {
-            padding: 25px 30px;
-        }
-        .fiche-content h1 { font-size: 1.4em; color: #2d5a27; border-bottom: 2px solid #e5e5e5; padding-bottom: 10px; margin-top: 0; }
-        .fiche-content h2 { font-size: 1.2em; color: #3d6a37; margin-top: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-        .fiche-content h3 { font-size: 1.05em; color: #555; margin-top: 1.2em; }
-        .fiche-content p { margin: 12px 0; }
-        .fiche-content blockquote {
+        .content h1 { font-size: 1.4em; color: #2d5a27; border-bottom: 2px solid #e5e5e5; padding-bottom: 10px; margin-top: 0; }
+        .content h2 { font-size: 1.2em; color: #3d6a37; margin-top: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .content h3 { font-size: 1.05em; color: #555; margin-top: 1.2em; }
+        .content p { margin: 12px 0; }
+        .content blockquote {
             border-left: 4px solid #4a7c43;
             margin: 15px 0;
             padding: 12px 20px;
@@ -1623,27 +1470,26 @@ PdfCompanion = {
             font-style: italic;
             color: #555;
         }
-        .fiche-content ul { padding-left: 25px; margin: 10px 0; }
-        .fiche-content li { margin: 6px 0; }
-        .fiche-content a { color: #2d5a27; text-decoration: none; }
-        .fiche-content a:hover { text-decoration: underline; }
-        .fiche-content strong { color: #2d5a27; }
+        .content ul { padding-left: 25px; margin: 10px 0; }
+        .content li { margin: 6px 0; }
+        .content a { color: #2d5a27; text-decoration: none; }
+        .content a:hover { text-decoration: underline; }
+        .content strong { color: #2d5a27; }
         hr { border: none; height: 1px; background: #ddd; margin: 30px 0; }
         @media print {
             body { background: white; }
-            .fiche { box-shadow: none; border: 1px solid #ddd; }
+            .content { box-shadow: none; border: 1px solid #ddd; }
         }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>${this.escapeHtml(title)}</h1>
-        <div class="meta">
-            <span class="badge">Fiches de lecture</span>
-            ${this.escapeHtml(authors)}${year ? ' | ' + year : ''}
-        </div>
+        <div class="subtitle">${this.escapeHtml(subtitle)}</div>
     </div>
-    ${fichesHtml}
+    <div class="content">
+        <p>${bodyHtml}</p>
+    </div>
 </body>
 </html>`;
 
@@ -1657,9 +1503,497 @@ PdfCompanion = {
             win.document.open();
             win.document.write(html);
             win.document.close();
-            win.document.title = "Fiches - " + title.substring(0, 40);
+            win.document.title = title.substring(0, 50);
         }, { once: true });
 
-        this.log("Displayed " + fiches.length + " reading cards for: " + item.key);
+        this.log("displayMarkdown: " + title);
+    },
+
+    // === READING CARDS (FICHES DE LECTURE) ===
+    async showReadingCards() {
+        let items = Zotero.getActiveZoteroPane().getSelectedItems();
+        if (!items || items.length === 0) {
+            this.showNotification("PDF Companion", "Aucun item sélectionné");
+            return;
+        }
+
+        let item = items[0];
+        if (item.isAttachment() || item.isNote()) {
+            this.showNotification("PDF Companion", "Sélectionnez un article, pas un attachement");
+            return;
+        }
+
+        let title = item.getField("title") || "Unknown";
+        let authors = item.getCreators().map(c => (c.firstName || "") + " " + (c.lastName || c.name || "")).join(", ");
+        let year = item.getField("year") || "";
+        let subtitle = (authors ? authors : "") + (year ? " | " + year : "");
+
+        let pw = new Zotero.ProgressWindow({ closeOnClick: false });
+        pw.changeHeadline("Lectures - " + title.substring(0, 25));
+        pw.show();
+        let stepItem = new pw.ItemProgress("chrome://zotero/skin/spinner-16px.png", "Recherche des fiches...");
+
+        try {
+            // 1. Get children
+            let url = this.config.apiUrl + "/item/" + item.key + "/children";
+            let response = await Zotero.HTTP.request("GET", url, { timeout: 15000 });
+            let children = JSON.parse(response.responseText);
+
+            // 2. Filter by title containing "fiche de lecture"
+            let fiches = children.children.filter(c => {
+                let t = (c.data.title || "").toLowerCase();
+                return t.includes("fiche de lecture");
+            });
+
+            if (fiches.length === 0) {
+                stepItem.setIcon("chrome://zotero/skin/cross.png");
+                stepItem.setText("Aucune fiche trouvée");
+                pw.addDescription("Utilisez 'Lire l'article' pour créer une fiche.");
+                pw.startCloseTimer(4000);
+                return;
+            }
+
+            // 3. Download all MDs to get first line as description
+            stepItem.setText("Téléchargement de " + fiches.length + " fiche(s)...");
+            let ficheData = [];
+            for (let fiche of fiches) {
+                try {
+                    let dropboxUrl = fiche.data.url.replace("dl=0", "dl=1");
+                    if (!dropboxUrl.includes("dl=1")) {
+                        dropboxUrl += (dropboxUrl.includes("?") ? "&" : "?") + "dl=1";
+                    }
+                    let contentResponse = await Zotero.HTTP.request("GET", dropboxUrl, {
+                        timeout: 15000, responseType: "text"
+                    });
+                    let md = contentResponse.responseText;
+                    let firstLine = md.split("\n").find(l => l.trim().length > 0) || "Fiche";
+                    firstLine = firstLine.replace(/^#+\s*/, "");
+                    let dateStr = fiche.data.dateAdded ? new Date(fiche.data.dateAdded).toLocaleDateString('fr-FR') : '';
+                    ficheData.push({ description: firstLine, date: dateStr, markdown: md });
+                } catch (e) {
+                    this.log("Failed to download fiche: " + e);
+                }
+            }
+
+            pw.close();
+
+            if (ficheData.length === 0) {
+                this.showNotification("Erreur", "Impossible de télécharger les fiches");
+                return;
+            }
+
+            // 4. If single fiche, display directly
+            if (ficheData.length === 1) {
+                this.displayMarkdown(title, subtitle, ficheData[0].markdown);
+                return;
+            }
+
+            // 5. Multiple fiches: show selection list window
+            let self = this;
+            let entriesHtml = ficheData.map((f, idx) => {
+                return '<div class="entry" data-index="' + idx + '">' +
+                    '<span class="entry-title">' + this.escapeHtml(f.description.substring(0, 80)) + '</span>' +
+                    '<span class="entry-date">' + this.escapeHtml(f.date) + '</span>' +
+                    '</div>';
+            }).join('');
+
+            let listHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
+                '<title>Fiches de lecture</title>' +
+                '<style>' +
+                '* { box-sizing: border-box; }' +
+                'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 20px; background: #f5f7f5; color: #333; }' +
+                'h2 { color: #2d5a27; margin: 0 0 15px 0; font-size: 1.2em; }' +
+                '.entry { background: white; padding: 14px 18px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border-left: 3px solid #4a7c43; }' +
+                '.entry:hover { background: #eef4ee; }' +
+                '.entry-title { font-weight: 500; flex: 1; }' +
+                '.entry-date { color: #888; font-size: 0.85em; margin-left: 12px; white-space: nowrap; }' +
+                '</style></head><body>' +
+                '<h2>' + this.escapeHtml(title.substring(0, 60)) + '</h2>' +
+                entriesHtml +
+                '</body></html>';
+
+            let win = Services.ww.openWindow(
+                null, "about:blank", "_blank",
+                "chrome,centerscreen,resizable=yes,scrollbars=yes,width=650,height=400",
+                null
+            );
+
+            win.addEventListener("load", function onLoad() {
+                win.removeEventListener("load", onLoad);
+                win.document.open();
+                win.document.write(listHtml);
+                win.document.close();
+                win.document.title = "Fiches de lecture";
+
+                // Bind click handlers
+                let divs = win.document.querySelectorAll('.entry');
+                for (let i = 0; i < divs.length; i++) {
+                    divs[i].addEventListener('click', function() {
+                        let idx = parseInt(this.getAttribute('data-index'));
+                        let md = ficheData[idx].markdown;
+                        win.close();
+                        self.displayMarkdown(title, subtitle, md);
+                    });
+                }
+            }, { once: true });
+
+        } catch (e) {
+            this.log("showReadingCards error: " + e);
+            stepItem.setIcon("chrome://zotero/skin/cross.png");
+            stepItem.setText("Erreur: " + (e.message || "Connexion échouée"));
+            pw.startCloseTimer(4000);
+        }
+    },
+
+    // === COLLECTION SYNTHESES ===
+    async showCollectionSyntheses() {
+        let collection = this.getSelectedCollection();
+        if (!collection) {
+            this.showNotification("PDF Companion", "Sélectionnez une collection");
+            return;
+        }
+
+        let pw = new Zotero.ProgressWindow({ closeOnClick: false });
+        pw.changeHeadline("Synthèses - " + collection.name.substring(0, 25));
+        pw.show();
+        let stepItem = new pw.ItemProgress("chrome://zotero/skin/spinner-16px.png", "Recherche des synthèses...");
+
+        try {
+            // 1. List collection items, filter reports with "Synthèse" in title
+            let url = this.config.apiUrl + "/collections/" + encodeURIComponent(collection.key) + "/items";
+            let response = await Zotero.HTTP.request("GET", url, { timeout: 15000 });
+            let data = JSON.parse(response.responseText);
+            let items = data.items || [];
+
+            let synthItems = items.filter(it => {
+                return (it.title || "").toLowerCase().includes("synthèse") ||
+                       (it.title || "").toLowerCase().includes("synthese");
+            });
+
+            if (synthItems.length === 0) {
+                stepItem.setIcon("chrome://zotero/skin/cross.png");
+                stepItem.setText("Aucune synthèse trouvée");
+                pw.addDescription("Utilisez 'Synthèse de la collection' pour en créer une.");
+                pw.startCloseTimer(4000);
+                return;
+            }
+
+            // 2. For each synthesis, get children to find MD attachment + first line
+            stepItem.setText("Chargement de " + synthItems.length + " synthèse(s)...");
+            let synthData = [];
+
+            for (let si of synthItems) {
+                try {
+                    let childUrl = this.config.apiUrl + "/item/" + encodeURIComponent(si.key) + "/children";
+                    let childResp = await Zotero.HTTP.request("GET", childUrl, { timeout: 15000 });
+                    let childData = JSON.parse(childResp.responseText);
+                    let mdChild = (childData.children || []).find(c =>
+                        c.data && c.data.contentType === "text/markdown"
+                    );
+
+                    if (!mdChild) continue;
+
+                    let dropboxUrl = mdChild.data.url.replace("dl=0", "dl=1");
+                    if (!dropboxUrl.includes("dl=1")) {
+                        dropboxUrl += (dropboxUrl.includes("?") ? "&" : "?") + "dl=1";
+                    }
+
+                    let mdResp = await Zotero.HTTP.request("GET", dropboxUrl, {
+                        timeout: 15000, responseType: "text"
+                    });
+                    let md = mdResp.responseText;
+                    let firstLine = md.split("\n").find(l => l.trim().length > 0) || "Synthèse";
+                    firstLine = firstLine.replace(/^#+\s*/, "");
+
+                    let dateStr = mdChild.data.dateAdded
+                        ? new Date(mdChild.data.dateAdded).toLocaleDateString('fr-FR') : '';
+
+                    synthData.push({
+                        title: si.title,
+                        description: firstLine,
+                        date: dateStr,
+                        markdown: md
+                    });
+                } catch (e) {
+                    this.log("Failed to load synthesis " + si.key + ": " + e);
+                }
+            }
+
+            pw.close();
+
+            if (synthData.length === 0) {
+                this.showNotification("Erreur", "Impossible de charger les synthèses");
+                return;
+            }
+
+            // 3. Single: display directly
+            if (synthData.length === 1) {
+                this.displayMarkdown(synthData[0].title, synthData[0].description, synthData[0].markdown);
+                return;
+            }
+
+            // 4. Multiple: selection window
+            let self = this;
+            let entriesHtml = synthData.map((s, idx) => {
+                return '<div class="entry" data-index="' + idx + '">' +
+                    '<span class="entry-title">' + this.escapeHtml(s.description.substring(0, 80)) + '</span>' +
+                    '<span class="entry-date">' + this.escapeHtml(s.date) + '</span>' +
+                    '</div>';
+            }).join('');
+
+            let listHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
+                '<title>Synthèses</title><style>' +
+                '* { box-sizing: border-box; }' +
+                'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 20px; background: #f5f7f5; color: #333; }' +
+                'h2 { color: #2d5a27; margin: 0 0 15px 0; font-size: 1.2em; }' +
+                '.entry { background: white; padding: 14px 18px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border-left: 3px solid #4a7c43; }' +
+                '.entry:hover { background: #eef4ee; }' +
+                '.entry-title { font-weight: 500; flex: 1; }' +
+                '.entry-date { color: #888; font-size: 0.85em; margin-left: 12px; white-space: nowrap; }' +
+                '</style></head><body>' +
+                '<h2>Synthèses - ' + this.escapeHtml(collection.name.substring(0, 40)) + '</h2>' +
+                entriesHtml + '</body></html>';
+
+            let win = Services.ww.openWindow(
+                null, "about:blank", "_blank",
+                "chrome,centerscreen,resizable=yes,scrollbars=yes,width=650,height=400",
+                null
+            );
+
+            win.addEventListener("load", function onLoad() {
+                win.removeEventListener("load", onLoad);
+                win.document.open();
+                win.document.write(listHtml);
+                win.document.close();
+                win.document.title = "Synthèses";
+
+                let divs = win.document.querySelectorAll('.entry');
+                for (let i = 0; i < divs.length; i++) {
+                    divs[i].addEventListener('click', function() {
+                        let idx = parseInt(this.getAttribute('data-index'));
+                        let s = synthData[idx];
+                        win.close();
+                        self.displayMarkdown(s.title, s.description, s.markdown);
+                    });
+                }
+            }, { once: true });
+
+        } catch (e) {
+            this.log("showCollectionSyntheses error: " + e);
+            stepItem.setIcon("chrome://zotero/skin/cross.png");
+            stepItem.setText("Erreur: " + (e.message || "Connexion échouée"));
+            pw.startCloseTimer(4000);
+        }
+    },
+
+    // === SYNTHESIZE COLLECTION ===
+    async synthesizeCollection() {
+        let collection = this.getSelectedCollection();
+        if (!collection) {
+            this.showNotification("PDF Companion", "Sélectionnez une collection");
+            return;
+        }
+
+        let self = this;
+
+        let html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Synthèse - ${this.escapeHtml(collection.name)}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0; padding: 20px;
+            background: #f5f7f5; color: #333;
+        }
+        h2 { color: #2d5a27; margin: 0 0 15px 0; font-size: 1.2em; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; font-weight: 500; margin-bottom: 4px; font-size: 0.9em; color: #555; }
+        input[type="text"] {
+            width: 100%; padding: 10px 12px; border: 1px solid #ccc;
+            border-radius: 6px; font-size: 0.95em;
+        }
+        input[type="text"]:focus { outline: none; border-color: #4a7c43; }
+        select {
+            width: 100%; padding: 10px 12px; border: 1px solid #ccc;
+            border-radius: 6px; font-size: 0.95em; background: white;
+        }
+        #btn-launch {
+            background: linear-gradient(135deg, #2d5a27, #4a7c43);
+            color: white; border: none; padding: 12px 24px;
+            border-radius: 8px; font-size: 1em; cursor: pointer;
+            width: 100%; margin-top: 8px; font-weight: 500;
+        }
+        #btn-launch:hover { opacity: 0.9; }
+        #btn-launch:disabled { opacity: 0.5; cursor: not-allowed; }
+        #sse-log {
+            margin-top: 15px; background: #1e1e1e; color: #d4d4d4;
+            border-radius: 8px; padding: 12px 15px; font-family: monospace;
+            font-size: 0.85em; height: 250px; overflow-y: auto;
+            display: none; white-space: pre-wrap;
+        }
+        .log-init { color: #569cd6; }
+        .log-config { color: #9cdcfe; }
+        .log-extraction { color: #dcdcaa; }
+        .log-synthesis { color: #4ec9b0; }
+        .log-storage { color: #c586c0; }
+        .log-error { color: #f44747; }
+        .log-complete { color: #6a9955; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h2>Synthèse : ${this.escapeHtml(collection.name)}</h2>
+    <div class="form-group">
+        <label for="focus">Focus de recherche</label>
+        <input type="text" id="focus" placeholder="Ex: mécanismes d'action, effets secondaires...">
+    </div>
+    <div class="form-group">
+        <label for="level">Niveau de détail</label>
+        <select id="level">
+            <option value="compact">Compact</option>
+            <option value="moyen">Moyen</option>
+            <option value="complet" selected>Complet</option>
+        </select>
+    </div>
+    <button id="btn-launch">Lancer la synthèse</button>
+    <div id="sse-log"></div>
+</body>
+</html>`;
+
+        let win = Services.ww.openWindow(
+            null, "about:blank", "_blank",
+            "chrome,centerscreen,resizable=yes,scrollbars=yes,width=550,height=500",
+            null
+        );
+
+        win.addEventListener("load", () => {
+            win.document.open();
+            win.document.write(html);
+            win.document.close();
+            win.document.title = "Synthèse - " + collection.name;
+
+            let btn = win.document.getElementById('btn-launch');
+            let focusInput = win.document.getElementById('focus');
+            let levelSelect = win.document.getElementById('level');
+            let logDiv = win.document.getElementById('sse-log');
+
+            btn.addEventListener('click', () => {
+                let focus = focusInput.value.trim();
+                let level = levelSelect.value;
+
+                btn.disabled = true;
+                focusInput.disabled = true;
+                levelSelect.disabled = true;
+                logDiv.style.display = 'block';
+
+                let sseUrl = self.config.paperReaderUrl + "/synthesize/collection/" +
+                    encodeURIComponent(collection.key) + "/focused/stream?" +
+                    "focus=" + encodeURIComponent(focus) +
+                    "&level=" + encodeURIComponent(level);
+
+                self.log("SSE synthesis: " + sseUrl);
+
+                function appendLog(text, cssClass) {
+                    let span = win.document.createElement('span');
+                    span.className = cssClass || '';
+                    span.textContent = text + "\n";
+                    logDiv.appendChild(span);
+                    logDiv.scrollTop = logDiv.scrollHeight;
+                }
+
+                let xhr = new XMLHttpRequest();
+                let lastIndex = 0;
+
+                xhr.open("GET", sseUrl, true);
+                xhr.setRequestHeader("Accept", "text/event-stream");
+
+                xhr.onprogress = () => {
+                    let newData = xhr.responseText.substring(lastIndex);
+                    lastIndex = xhr.responseText.length;
+                    let lines = newData.split("\n");
+
+                    for (let line of lines) {
+                        if (!line.startsWith("data: ")) continue;
+                        try {
+                            let data = JSON.parse(line.substring(6));
+                            let evType = data.event || data.step || "";
+
+                            switch (evType) {
+                                case "init":
+                                    appendLog("Collection: " + (data.total_articles || data.count || "?") + " articles", "log-init");
+                                    break;
+                                case "config":
+                                    appendLog("Providers: " + (data.providers || JSON.stringify(data.config || "")), "log-config");
+                                    break;
+                                case "extraction":
+                                    let prog = data.current ? "[" + data.current + "/" + data.total + "] " : "";
+                                    appendLog(prog + (data.title || data.message || "Extraction..."), "log-extraction");
+                                    break;
+                                case "synthesis":
+                                    appendLog(data.message || "Synthèse en cours...", "log-synthesis");
+                                    break;
+                                case "storage":
+                                    appendLog(data.message || "Sauvegarde...", "log-storage");
+                                    break;
+                                case "error":
+                                    appendLog("ERREUR: " + (data.message || data.error || "Inconnue"), "log-error");
+                                    break;
+                                case "complete":
+                                    appendLog("Synthèse terminée!", "log-complete");
+
+                                    // Extract markdown and display
+                                    let md = "";
+                                    if (data.synthesis && data.synthesis.synthese_complete && data.synthesis.synthese_complete.full_text_markdown) {
+                                        md = data.synthesis.synthese_complete.full_text_markdown;
+                                    } else if (data.full_text_markdown) {
+                                        md = data.full_text_markdown;
+                                    } else if (data.result && data.result.full_text_markdown) {
+                                        md = data.result.full_text_markdown;
+                                    }
+
+                                    if (md) {
+                                        // Close dialog and display
+                                        setTimeout(() => {
+                                            win.close();
+                                            self.displayMarkdown(
+                                                "Synthèse - " + collection.name,
+                                                focus || "Vue d'ensemble",
+                                                md
+                                            );
+                                        }, 1500);
+                                    } else {
+                                        appendLog("Synthèse terminée mais aucun markdown trouvé dans la réponse.", "log-error");
+                                        btn.disabled = false;
+                                    }
+                                    break;
+                                default:
+                                    if (data.message) {
+                                        appendLog(data.message, "");
+                                    }
+                            }
+                        } catch (e) {}
+                    }
+                };
+
+                xhr.onerror = () => {
+                    appendLog("Erreur de connexion au serveur", "log-error");
+                    btn.disabled = false;
+                    focusInput.disabled = false;
+                    levelSelect.disabled = false;
+                };
+
+                xhr.ontimeout = () => {
+                    appendLog("Timeout - la synthèse prend trop de temps", "log-error");
+                    btn.disabled = false;
+                    focusInput.disabled = false;
+                    levelSelect.disabled = false;
+                };
+
+                xhr.timeout = 600000; // 10 minutes
+                xhr.send();
+            });
+        }, { once: true });
     }
 };

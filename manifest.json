@@ -1,25 +1,41 @@
 {
-    "manifest_version": 2,
-    "name": "PDF Companion",
-    "version": "4.4.0",
-    "description": "Onyx bibliography management integration for Zotero",
-    "author": "Onyx",
-    "icons": {
-      "48": "skin/icon.png",
-      "96": "skin/icon@2x.png"
-    },
-    "applications": {
-        "zotero": {
-            "id": "pdf-companion@onyx.local",
-            "update_url": "https://raw.githubusercontent.com/VersoVet/zotero-pdf-companion/main/updates.json",
-            "strict_min_version": "6.999",
-            "strict_max_version": "8.0.*"
-        }
-    },
-    "options_ui": {
-        "page": "options.xhtml"
-    },
-    "defaults": {
-        "preferences": "prefs.js"
+  "manifest_version": 2,
+  "name": "PDF Companion",
+  "version": "4.4.0",
+  "description": "Onyx bibliography management integration for Zotero",
+  "author": "Onyx",
+  "icons": {
+    "48": "skin/icon.png",
+    "96": "skin/icon@2x.png"
+  },
+  "applications": {
+    "zotero": {
+      "id": "pdf-companion@onyx.local",
+      "update_url": "https://raw.githubusercontent.com/VersoVet/zotero-pdf-companion/main/updates.json",
+      "strict_min_version": "6.999",
+      "strict_max_version": "8.0.*"
     }
+  },
+  "options_ui": {
+    "page": "options.xhtml"
+  },
+  "defaults": {
+    "preferences": "prefs.js"
+  },
+  "dashboard": {
+    "enabled": true,
+    "page": "/",
+    "icon": "link",
+    "category": "skill",
+    "color": "#00d4aa"
+  },
+  "integration": {
+    "redis": {
+      "publish_status": true,
+      "channel": "onyx:skill:status"
+    },
+    "sdk": {
+      "min_version": "2.1.0"
+    }
+  }
 }

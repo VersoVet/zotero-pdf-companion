@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "name": "PDF Companion",
-  "version": "4.4.0",
-  "description": "Onyx bibliography management integration for Zotero",
+  "version": "4.5.0",
+  "description": "Onyx bibliography management integration for Zotero - PDF recovery, metadata enrichment, paper reading, collection maintenance",
   "author": "Onyx",
   "icons": {
     "48": "skin/icon.png",

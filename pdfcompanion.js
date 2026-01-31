@@ -47,6 +47,211 @@ PdfCompanion = {
         if (this.logBuffer.length > 100) this.logBuffer.shift();
     },
 
+    // === TOAST OVERLAY SYSTEM ===
+    Toast: {
+        _css: `
+            #pdfcompanion-toast-container {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                z-index: 99999;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                pointer-events: none;
+                max-height: 80vh;
+                overflow: hidden;
+            }
+            .pdfcompanion-toast {
+                pointer-events: auto;
+                background: rgba(30, 30, 30, 0.95);
+                color: #eee;
+                border-radius: 8px;
+                padding: 12px 16px;
+                width: 320px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                font-size: 13px;
+                line-height: 1.4;
+                cursor: pointer;
+                opacity: 0;
+                transform: translateX(30px);
+                animation: pdfcompanion-toast-in 0.25s ease forwards;
+            }
+            .pdfcompanion-toast.closing {
+                animation: pdfcompanion-toast-out 0.2s ease forwards;
+            }
+            .pdfcompanion-toast-headline {
+                font-weight: 600;
+                font-size: 13px;
+                margin-bottom: 4px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .pdfcompanion-toast-msg {
+                font-size: 12px;
+                color: #bbb;
+                word-wrap: break-word;
+            }
+            .pdfcompanion-toast-icon {
+                flex-shrink: 0;
+                width: 16px;
+                height: 16px;
+            }
+            .pdfcompanion-toast-icon.spinner svg {
+                animation: pdfcompanion-spin 1s linear infinite;
+            }
+            .pdfcompanion-toast-icon.success svg { color: #4caf50; }
+            .pdfcompanion-toast-icon.error svg { color: #f44336; }
+            @keyframes pdfcompanion-toast-in {
+                to { opacity: 1; transform: translateX(0); }
+            }
+            @keyframes pdfcompanion-toast-out {
+                to { opacity: 0; transform: translateX(30px); }
+            }
+            @keyframes pdfcompanion-spin {
+                to { transform: rotate(360deg); }
+            }
+        `,
+
+        _spinnerSvg: '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6" stroke-opacity="0.3"/><path d="M14 8a6 6 0 0 0-6-6" stroke-linecap="round"/></svg>',
+        _tickSvg: '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8.5l3.5 3.5 6.5-8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        _crossSvg: '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l8 8M12 4l-8 8" stroke-linecap="round"/></svg>',
+
+        _getWindow() {
+            return Zotero.getMainWindow() || null;
+        },
+
+        _getContainer(doc) {
+            return doc.getElementById('pdfcompanion-toast-container') || null;
+        },
+
+        _createToastEl(doc, headline, message, iconHtml) {
+            let container = this._getContainer(doc);
+            if (!container) return null;
+
+            let el = doc.createElement('div');
+            el.className = 'pdfcompanion-toast';
+            el.innerHTML =
+                '<div class="pdfcompanion-toast-headline">' +
+                    (iconHtml ? '<span class="pdfcompanion-toast-icon">' + iconHtml + '</span>' : '') +
+                    '<span class="pdfcompanion-toast-headline-text">' + PdfCompanion.escapeHtml(headline) + '</span>' +
+                '</div>' +
+                '<div class="pdfcompanion-toast-msg">' + PdfCompanion.escapeHtml(message || '') + '</div>';
+
+            el.addEventListener('click', () => this._closeEl(el));
+            container.appendChild(el);
+            return el;
+        },
+
+        _closeEl(el) {
+            if (!el || !el.parentNode) return;
+            el.classList.add('closing');
+            setTimeout(() => {
+                if (el.parentNode) el.parentNode.removeChild(el);
+            }, 200);
+        },
+
+        inject(doc) {
+            // Inject CSS into <head>
+            let style = doc.createElement('style');
+            style.id = 'pdfcompanion-toast-style';
+            style.textContent = this._css;
+            let head = doc.head || doc.documentElement;
+            head.appendChild(style);
+
+            // Inject container into <body> (fallback to documentElement for XUL)
+            let container = doc.createElement('div');
+            container.id = 'pdfcompanion-toast-container';
+            let body = doc.body || doc.documentElement;
+            body.appendChild(container);
+        },
+
+        remove(doc) {
+            let style = doc.getElementById('pdfcompanion-toast-style');
+            if (style) style.remove();
+            let container = doc.getElementById('pdfcompanion-toast-container');
+            if (container) container.remove();
+        },
+
+        notify(headline, message, duration) {
+            let win = this._getWindow();
+            if (!win) return;
+            let doc = win.document;
+            duration = duration || 5000;
+
+            let el = this._createToastEl(doc, headline, message || '');
+            if (!el) return;
+            setTimeout(() => this._closeEl(el), duration);
+        },
+
+        progress(headline) {
+            let win = this._getWindow();
+            if (!win) return this._fallbackProgress(headline);
+            let doc = win.document;
+            let self = this;
+
+            let el = this._createToastEl(doc, headline, '', this._spinnerSvg);
+            if (!el) return this._fallbackProgress(headline);
+
+            let iconSpan = el.querySelector('.pdfcompanion-toast-icon');
+            if (iconSpan) iconSpan.classList.add('spinner');
+            let headlineSpan = el.querySelector('.pdfcompanion-toast-headline-text');
+            let msgDiv = el.querySelector('.pdfcompanion-toast-msg');
+
+            let closed = false;
+            return {
+                update(text) {
+                    if (closed) return;
+                    if (msgDiv) msgDiv.textContent = text || '';
+                },
+                setHeadline(text) {
+                    if (closed) return;
+                    if (headlineSpan) headlineSpan.textContent = text || '';
+                },
+                success(text) {
+                    if (closed) return;
+                    closed = true;
+                    if (iconSpan) {
+                        iconSpan.classList.remove('spinner');
+                        iconSpan.classList.add('success');
+                        iconSpan.innerHTML = self._tickSvg;
+                    }
+                    if (msgDiv) msgDiv.textContent = text || '';
+                    setTimeout(() => self._closeEl(el), 4000);
+                },
+                error(text) {
+                    if (closed) return;
+                    closed = true;
+                    if (iconSpan) {
+                        iconSpan.classList.remove('spinner');
+                        iconSpan.classList.add('error');
+                        iconSpan.innerHTML = self._crossSvg;
+                    }
+                    if (msgDiv) msgDiv.textContent = text || '';
+                    setTimeout(() => self._closeEl(el), 5000);
+                },
+                close() {
+                    if (closed) return;
+                    closed = true;
+                    self._closeEl(el);
+                }
+            };
+        },
+
+        // Fallback if no window available - returns no-op object
+        _fallbackProgress(headline) {
+            return {
+                update() {},
+                setHeadline() {},
+                success() {},
+                error() {},
+                close() {}
+            };
+        }
+    },
+
     init({ id, version, rootURI }) {
         this.id = id;
         this.version = version;
@@ -64,6 +269,9 @@ PdfCompanion = {
     addToWindow(window) {
         let doc = window.document;
 
+        // === Toast Overlay ===
+        this.Toast.inject(doc);
+
         // === Tools Menu ===
         let toolsPopup = doc.getElementById('menu_ToolsPopup');
         if (toolsPopup) {
@@ -74,9 +282,30 @@ PdfCompanion = {
             let menupopup = doc.createXULElement('menupopup');
             menupopup.id = 'pdfcompanion-tools-popup';
 
-            // Menu items
+            // Sub-menu "Lire l'article" with reading modes
+            let analyzeSubmenu = doc.createXULElement('menu');
+            analyzeSubmenu.id = 'pdfcompanion-tools-analyze';
+            analyzeSubmenu.setAttribute('label', 'Lire l\'article');
+            let analyzePopup = doc.createXULElement('menupopup');
+            analyzePopup.id = 'pdfcompanion-tools-analyze-popup';
+
+            let readingModes = [
+                { id: 'standard', label: 'Lecture standard', mode: 'standard' },
+                { id: 'full', label: 'Lecture complète', mode: 'full' },
+                { id: 'section', label: 'Lecture par section', mode: 'section' }
+            ];
+            for (let rm of readingModes) {
+                let mi = doc.createXULElement('menuitem');
+                mi.id = 'pdfcompanion-tools-analyze-' + rm.id;
+                mi.setAttribute('label', rm.label);
+                mi.addEventListener('command', () => this.summarizeForSelected(rm.mode));
+                analyzePopup.appendChild(mi);
+            }
+            analyzeSubmenu.appendChild(analyzePopup);
+            menupopup.appendChild(analyzeSubmenu);
+
+            // Other menu items
             let items = [
-                { id: 'analyze', label: 'Lire l\'article', action: () => this.summarizeForSelected() },
                 { id: 'fetch', label: 'Télécharger le PDF', action: () => this.fetchPdfForSelected() },
                 { id: 'local', label: 'Joindre un PDF', action: () => this.attachLocalPdfForSelected() },
                 { id: 'replace', label: 'Remplacer un PDF', action: () => this.replacePdfForSelected() },
@@ -117,8 +346,30 @@ PdfCompanion = {
             let menupopup = doc.createXULElement('menupopup');
             menupopup.id = 'pdfcompanion-context-popup';
 
+            // Sub-menu "Lire l'article" with reading modes
+            let ctxAnalyzeSubmenu = doc.createXULElement('menu');
+            ctxAnalyzeSubmenu.id = 'pdfcompanion-context-analyze';
+            ctxAnalyzeSubmenu.setAttribute('label', 'Lire l\'article');
+            let ctxAnalyzePopup = doc.createXULElement('menupopup');
+            ctxAnalyzePopup.id = 'pdfcompanion-context-analyze-popup';
+
+            let ctxReadingModes = [
+                { id: 'standard', label: 'Lecture standard', mode: 'standard' },
+                { id: 'full', label: 'Lecture complète', mode: 'full' },
+                { id: 'section', label: 'Lecture par section', mode: 'section' }
+            ];
+            for (let rm of ctxReadingModes) {
+                let mi = doc.createXULElement('menuitem');
+                mi.id = 'pdfcompanion-context-analyze-' + rm.id;
+                mi.setAttribute('label', rm.label);
+                mi.addEventListener('command', () => this.summarizeForSelected(rm.mode));
+                ctxAnalyzePopup.appendChild(mi);
+            }
+            ctxAnalyzeSubmenu.appendChild(ctxAnalyzePopup);
+            menupopup.appendChild(ctxAnalyzeSubmenu);
+
+            // Other context menu items
             let items = [
-                { id: 'analyze', label: 'Lire l\'article', action: () => this.summarizeForSelected() },
                 { id: 'fetch', label: 'Télécharger le PDF', action: () => this.fetchPdfForSelected() },
                 { id: 'local', label: 'Joindre un PDF', action: () => this.attachLocalPdfForSelected() },
                 { id: 'replace', label: 'Remplacer un PDF', action: () => this.replacePdfForSelected() },
@@ -127,17 +378,11 @@ PdfCompanion = {
             ];
 
             for (let item of items) {
-                if (item.separator) {
-                    let sep = doc.createXULElement('menuseparator');
-                    sep.id = 'pdfcompanion-context-' + item.id;
-                    menupopup.appendChild(sep);
-                } else {
-                    let menuitem = doc.createXULElement('menuitem');
-                    menuitem.id = 'pdfcompanion-context-' + item.id;
-                    menuitem.setAttribute('label', item.label);
-                    menuitem.addEventListener('command', item.action);
-                    menupopup.appendChild(menuitem);
-                }
+                let menuitem = doc.createXULElement('menuitem');
+                menuitem.id = 'pdfcompanion-context-' + item.id;
+                menuitem.setAttribute('label', item.label);
+                menuitem.addEventListener('command', item.action);
+                menupopup.appendChild(menuitem);
             }
 
             submenu.appendChild(menupopup);
@@ -193,6 +438,7 @@ PdfCompanion = {
 
     removeFromWindow(window) {
         var doc = window.document;
+        this.Toast.remove(doc);
         for (let id of this.addedElementIDs) {
             let elem = doc.getElementById(id);
             if (elem) elem.remove();
@@ -247,15 +493,22 @@ PdfCompanion = {
                 if (!item || item.isAttachment() || item.isNote()) continue;
                 let itemType = Zotero.ItemTypes.getName(item.itemTypeID);
                 if (!["journalArticle", "conferencePaper", "preprint", "book", "thesis"].includes(itemType)) continue;
-                let hasPdf = await this.itemHasPdfAttachment(item);
                 let title = item.getField("title") || "Unknown";
-                if (hasPdf) {
-                    this.log("PDF already attached for: " + title + " → enrich only");
-                    await this.enrichMetadata(item);
-                } else {
-                    this.log("No PDF for: " + title + " → recover + enrich");
-                    await this.recoverPdf(item);
-                    await this.enrichMetadata(item);
+                let hasPdf = await this.itemHasPdfAttachment(item);
+
+                // Always enrich first (may find and attach a PDF)
+                this.log("Enriching: " + title + (hasPdf ? " (PDF present)" : " (no PDF)"));
+                await this.enrichMetadata(item);
+
+                // If no PDF before enrich, re-check after - enrich may have attached one
+                if (!hasPdf) {
+                    let hasPdfNow = await this.itemHasPdfAttachment(item);
+                    if (hasPdfNow) {
+                        this.log("PDF attached by enrich for: " + title + " → skip recovery");
+                    } else {
+                        this.log("Still no PDF for: " + title + " → recovering");
+                        await this.recoverPdf(item);
+                    }
                 }
             } catch (e) {
                 this.log("processPendingItems error: " + e);
@@ -288,17 +541,15 @@ PdfCompanion = {
         let title = item.getField("title") || "Unknown";
         this.log("Recovering PDF for: " + title);
 
-        let pw = new Zotero.ProgressWindow({ closeOnClick: true });
-        pw.changeHeadline("PDF Companion - " + title.substring(0, 30));
-        pw.show();
-
-        let stepItem = new pw.ItemProgress("chrome://zotero/skin/spinner-16px.png", "Connecting...");
+        let toast = this.Toast.progress("PDF Companion - " + title.substring(0, 30));
+        toast.update("Connecting...");
 
         try {
             let url = this.config.apiUrl + "/audit/recover-pdf-stream?" +
                 "key=" + encodeURIComponent(item.key) +
                 "&use_scihub=" + (this.config.useScihub ? "true" : "false");
 
+            let self = this;
             let finalResult = await new Promise((resolve, reject) => {
                 let xhr = new XMLHttpRequest();
                 let lastIndex = 0;
@@ -315,7 +566,7 @@ PdfCompanion = {
                         if (line.startsWith("data: ")) {
                             try {
                                 let data = JSON.parse(line.substring(6));
-                                stepItem.setText(this.getStepText(data));
+                                toast.update(self.getStepText(data));
                                 if (data.step === "complete" || data.step === "error") {
                                     result = data;
                                 }
@@ -331,7 +582,7 @@ PdfCompanion = {
                 xhr.send();
             });
 
-            pw.close();
+            toast.close();
 
             if (!finalResult) {
                 this.showNotification("Error", "No response from server");
@@ -339,14 +590,14 @@ PdfCompanion = {
             }
 
             if (finalResult.status === "success") {
-                this.showNotification("PDF Found!", this.getSourceLabel(finalResult.source) + "\n" + title.substring(0, 40));
+                this.showNotification("PDF Found!", this.getSourceLabel(finalResult.source) + " - " + title.substring(0, 40));
                 try { Zotero.Sync.Runner.sync(); } catch (e) {}
             } else {
-                this.showNotification("PDF Not Found", title.substring(0, 40) + "\n" + (finalResult.message || "Not available"));
+                this.showNotification("PDF Not Found", title.substring(0, 40) + " - " + (finalResult.message || "Not available"));
             }
 
         } catch (e) {
-            pw.close();
+            toast.close();
             this.showNotification("Error", e.message || "Connection failed");
         }
     },
@@ -481,19 +732,13 @@ PdfCompanion = {
         let title = item.getField("title") || "Unknown";
         this.log("Replacing PDF for: " + title + " (key: " + item.key + ")");
 
-        // Use ProgressWindow (closeOnClick: true allows closing by clicking)
-        let pw = new Zotero.ProgressWindow({ closeOnClick: true });
-        pw.changeHeadline("Replace PDF - " + title.substring(0, 30));
-        pw.show();
-
-        let stepItem = new pw.ItemProgress("chrome://zotero/skin/spinner-16px.png", "Reading file...");
+        let toast = this.Toast.progress("Replace PDF - " + title.substring(0, 30));
+        toast.update("Reading file...");
 
         try {
             let file = Zotero.File.pathToFile(filePath);
             if (!file.exists()) {
-                stepItem.setIcon("chrome://zotero/skin/cross.png");
-                stepItem.setText("File not found");
-                setTimeout(() => pw.close(), 3000);
+                toast.error("File not found");
                 return;
             }
 
@@ -503,18 +748,16 @@ PdfCompanion = {
             }
 
             this.log("Reading file: " + filename);
-            stepItem.setText("Reading: " + filename);
+            toast.update("Reading: " + filename);
             let fileData = await Zotero.File.getBinaryContentsAsync(file);
             this.log("File read: " + fileData.length + " bytes");
 
             if (fileData.length < 1000) {
-                stepItem.setIcon("chrome://zotero/skin/cross.png");
-                stepItem.setText("Invalid PDF (too small)");
-                setTimeout(() => pw.close(), 3000);
+                toast.error("Invalid PDF (too small)");
                 return;
             }
 
-            stepItem.setText("Uploading " + Math.round(fileData.length / 1024) + " KB...");
+            toast.update("Uploading " + Math.round(fileData.length / 1024) + " KB...");
 
             // Convert binary string to Uint8Array properly
             let fileBytes = new Uint8Array(fileData.length);
@@ -560,7 +803,7 @@ PdfCompanion = {
                             try {
                                 let data = JSON.parse(line.substring(6));
                                 self.log("SSE: " + JSON.stringify(data));
-                                stepItem.setText(self.getReplaceStepText(data));
+                                toast.update(self.getReplaceStepText(data));
                                 if (data.step === "complete" || data.step === "error") {
                                     result = data;
                                 }
@@ -577,9 +820,7 @@ PdfCompanion = {
             });
 
             if (!finalResult) {
-                stepItem.setIcon("chrome://zotero/skin/cross.png");
-                stepItem.setText("No response from server");
-                setTimeout(() => pw.close(), 3000);
+                toast.error("No response from server");
                 return;
             }
 
@@ -588,20 +829,14 @@ PdfCompanion = {
                 if (finalResult.deleted_count > 0) {
                     msg += " (" + finalResult.deleted_count + " old removed)";
                 }
-                stepItem.setIcon("chrome://zotero/skin/tick.png");
-                stepItem.setText("Done: " + msg);
-                setTimeout(() => pw.close(), 3000);
+                toast.success("Done: " + msg);
                 try { Zotero.Sync.Runner.sync(); } catch (e) {}
             } else {
-                stepItem.setIcon("chrome://zotero/skin/cross.png");
-                stepItem.setText("Failed: " + (finalResult.message || "Unknown error"));
-                setTimeout(() => pw.close(), 4000);
+                toast.error("Failed: " + (finalResult.message || "Unknown error"));
             }
         } catch (e) {
             this.log("Replace PDF error: " + e);
-            stepItem.setIcon("chrome://zotero/skin/cross.png");
-            stepItem.setText("Error: " + (e.message || "Upload failed"));
-            setTimeout(() => pw.close(), 4000);
+            toast.error("Error: " + (e.message || "Upload failed"));
         }
     },
 
@@ -642,12 +877,10 @@ PdfCompanion = {
             return;
         }
 
-        // Batch: single ProgressWindow
+        // Batch: single toast
         let total = items.length;
-        let pw = new Zotero.ProgressWindow({ closeOnClick: false });
-        pw.changeHeadline("Enrichissement - 0/" + total);
-        pw.show();
-        let stepItem = new pw.ItemProgress("chrome://zotero/skin/spinner-16px.png", "Démarrage...");
+        let toast = this.Toast.progress("Enrichissement - 0/" + total);
+        toast.update("Démarrage...");
 
         let enriched = 0;
         let failed = 0;
@@ -655,8 +888,8 @@ PdfCompanion = {
         for (let i = 0; i < items.length; i++) {
             let item = items[i];
             let title = item.getField("title") || "Unknown";
-            pw.changeHeadline("Enrichissement - " + (i + 1) + "/" + total);
-            stepItem.setText(title.substring(0, 50));
+            toast.setHeadline("Enrichissement - " + (i + 1) + "/" + total);
+            toast.update(title.substring(0, 50));
 
             try {
                 let url = this.config.apiUrl + "/enrich/item-stream/" + encodeURIComponent(item.key);
@@ -673,7 +906,7 @@ PdfCompanion = {
                             if (line.startsWith("data: ")) {
                                 try {
                                     let data = JSON.parse(line.substring(6));
-                                    stepItem.setText((i + 1) + "/" + total + " - " + (data.message || data.step));
+                                    toast.update((i + 1) + "/" + total + " - " + (data.message || data.step));
                                     if (data.step === "complete" || data.step === "error") result = data;
                                 } catch (e) {}
                             }
@@ -698,17 +931,15 @@ PdfCompanion = {
             }
         }
 
-        pw.close();
+        toast.close();
         this.showNotification("Enrichissement terminé",
             enriched + " enrichis, " + failed + " échecs sur " + total);
     },
 
     async enrichMetadata(item) {
         let title = item.getField("title") || "Unknown";
-        let pw = new Zotero.ProgressWindow({ closeOnClick: true });
-        pw.changeHeadline("Enriching - " + title.substring(0, 30));
-        pw.show();
-        let stepItem = new pw.ItemProgress("chrome://zotero/skin/spinner-16px.png", "Connecting...");
+        let toast = this.Toast.progress("Enriching - " + title.substring(0, 30));
+        toast.update("Connecting...");
 
         try {
             let url = this.config.apiUrl + "/enrich/item-stream/" + encodeURIComponent(item.key);
@@ -729,7 +960,7 @@ PdfCompanion = {
                         if (line.startsWith("data: ")) {
                             try {
                                 let data = JSON.parse(line.substring(6));
-                                stepItem.setText(data.message || data.step);
+                                toast.update(data.message || data.step);
                                 if (data.step === "complete" || data.step === "error") {
                                     result = data;
                                 }
@@ -745,7 +976,7 @@ PdfCompanion = {
                 xhr.send();
             });
 
-            pw.close();
+            toast.close();
 
             if (finalResult && finalResult.status === "success") {
                 let fields = finalResult.fields_updated || [];
@@ -755,13 +986,13 @@ PdfCompanion = {
                 this.showNotification("Enrichment Failed", finalResult?.message || "Unknown error");
             }
         } catch (e) {
-            pw.close();
+            toast.close();
             this.showNotification("Error", e.message || "Connection failed");
         }
     },
 
     // === PAPER READER ===
-    async summarizeForSelected() {
+    async summarizeForSelected(mode) {
         let items = Zotero.getActiveZoteroPane().getSelectedItems();
         if (!items || items.length === 0) {
             this.showNotification("PDF Companion", "No items selected");
@@ -772,97 +1003,98 @@ PdfCompanion = {
             this.showNotification("PDF Companion", "Please select exactly one item");
             return;
         }
-        await this.summarizePaper(items[0]);
+        await this.summarizePaper(items[0], mode || "standard");
     },
 
-    async summarizePaper(item) {
+    async summarizePaper(item, mode) {
         let title = item.getField("title") || "Unknown";
-        let pw = new Zotero.ProgressWindow({ closeOnClick: true });
-        pw.changeHeadline("Paper Reader - " + title.substring(0, 25));
-        pw.show();
-        let stepItem = new pw.ItemProgress("chrome://zotero/skin/spinner-16px.png", "Connecting...");
+        let modeLabels = { "standard": "Standard", "full": "Complète", "section": "Par section" };
+        let modeLabel = modeLabels[mode] || mode;
+
+        let toast = this.Toast.progress("Lecture " + modeLabel + " - " + title.substring(0, 20));
+        toast.update("Connexion...");
 
         try {
-            let url = this.config.paperReaderUrl + "/analyze/zotero";
-            let requestBody = {
-                zotero_key: item.key,
-                options: {
-                    language: "fr",
-                    attach_to_zotero: true
-                }
-            };
+            let url = this.config.paperReaderUrl + "/analyze/zotero-stream?" +
+                "zotero_key=" + encodeURIComponent(item.key) +
+                "&lecture_mode=" + encodeURIComponent(mode);
 
-            this.log("Sending to Paper Reader: " + JSON.stringify(requestBody));
+            this.log("SSE Paper Reader: " + url + " (mode=" + mode + ")");
 
-            let response = await Zotero.HTTP.request("POST", url, {
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(requestBody),
-                timeout: 60000
+            let self = this;
+            let finalResult = await new Promise((resolve, reject) => {
+                let xhr = new XMLHttpRequest();
+                let lastIndex = 0;
+                let result = null;
+
+                xhr.open("GET", url, true);
+                xhr.setRequestHeader("Accept", "text/event-stream");
+
+                xhr.onprogress = () => {
+                    let newData = xhr.responseText.substring(lastIndex);
+                    lastIndex = xhr.responseText.length;
+                    let lines = newData.split("\n");
+                    for (let line of lines) {
+                        if (line.startsWith("data: ")) {
+                            try {
+                                let data = JSON.parse(line.substring(6));
+                                self.log("SSE analyze: " + JSON.stringify(data));
+                                toast.update(self.getAnalyzeStepText(data));
+                                if (data.done === true || data.step === "termine") {
+                                    result = { status: "success", data: data };
+                                } else if (data.step === "error" || data.step === "erreur") {
+                                    result = { status: "error", message: data.message || "Erreur inconnue" };
+                                }
+                            } catch (e) {}
+                        }
+                    }
+                };
+
+                xhr.onload = () => resolve(result);
+                xhr.onerror = () => reject(new Error("Connexion échouée"));
+                xhr.ontimeout = () => reject(new Error("Timeout"));
+                xhr.timeout = 600000; // 10 minutes
+                xhr.send();
             });
 
-            let result = JSON.parse(response.responseText);
-            this.log("Paper Reader response: " + JSON.stringify(result));
+            toast.close();
 
-            if (result.status === "completed") {
-                pw.close();
-                this.showNotification("Analysis Complete!", title.substring(0, 40));
-            } else if (result.status === "failed") {
-                pw.close();
-                this.showNotification("Analysis Failed", result.error || "Unknown error");
+            if (!finalResult) {
+                this.showNotification("Erreur", "Pas de réponse du serveur");
+                return;
+            }
+
+            if (finalResult.status === "success") {
+                this.showNotification("Lecture terminée!",
+                    title.substring(0, 40) + " - Fiche de lecture créée et attachée.");
+                try { Zotero.Sync.Runner.sync(); } catch (e) {}
             } else {
-                // Status is pending/ingesting/extracting/etc - poll for completion
-                stepItem.setText(this.getAnalysisStatusText(result.status));
-                await this.pollAnalysis(result.id, pw, stepItem, title);
+                this.showNotification("Échec de la lecture", finalResult.message || "Erreur inconnue");
             }
         } catch (e) {
-            pw.close();
-            this.log("Paper Reader error: " + e);
-            this.showNotification("Error", e.message || "Connection failed");
+            toast.close();
+            this.log("Paper Reader SSE error: " + e);
+            this.showNotification("Erreur", e.message || "Connexion échouée");
         }
     },
 
-    getAnalysisStatusText(status) {
+    getAnalyzeStepText(data) {
         let labels = {
-            "pending": "En attente...",
-            "ingesting": "Ingestion du PDF...",
-            "extracting": "Extraction LLM...",
-            "validating": "Validation multi-LLM...",
-            "synthesizing": "Synthèse en cours...",
-            "completed": "Terminé!",
-            "failed": "Échec"
+            "zotero": "Récupération depuis Zotero...",
+            "analyse": "Analyse du PDF...",
+            "extraction": "Extraction du contenu...",
+            "llm": "Traitement LLM...",
+            "section": "Analyse par section...",
+            "synthese": "Synthèse en cours...",
+            "generation": "Génération de la fiche...",
+            "sauvegarde": "Sauvegarde...",
+            "termine": "Terminé!"
         };
-        return labels[status] || status;
-    },
-
-    async pollAnalysis(ficheId, pw, stepItem, title) {
-        let url = this.config.paperReaderUrl + "/fiches/" + ficheId;
-        for (let i = 0; i < 120; i++) {  // 10 minutes max (120 * 5s)
-            await Zotero.Promise.delay(5000);
-            try {
-                let response = await Zotero.HTTP.request("GET", url, { timeout: 10000 });
-                let result = JSON.parse(response.responseText);
-
-                this.log("Poll #" + (i+1) + ": status=" + result.status);
-                stepItem.setText(this.getAnalysisStatusText(result.status));
-
-                if (result.status === "completed") {
-                    pw.close();
-                    this.showNotification("Analysis Complete!",
-                        title.substring(0, 40) + "\n\nFiche de lecture créée et attachée à Zotero.");
-                    // Trigger sync to pull the attachment
-                    try { Zotero.Sync.Runner.sync(); } catch (e) {}
-                    return;
-                } else if (result.status === "failed") {
-                    pw.close();
-                    this.showNotification("Analysis Failed", result.error || "Processing failed");
-                    return;
-                }
-            } catch (e) {
-                this.log("Poll error: " + e);
-            }
+        let text = labels[data.step] || data.message || data.step || "Traitement...";
+        if (data.message && data.step !== "termine" && !labels[data.step]) {
+            text = data.message;
         }
-        pw.close();
-        this.showNotification("Timeout", "Analysis taking too long.\nCheck Paper Reader dashboard.");
+        return text;
     },
 
     // === UTILITIES ===
@@ -1126,11 +1358,7 @@ PdfCompanion = {
 
     showNotification(headline, msg) {
         try {
-            let pw = new Zotero.ProgressWindow({ closeOnClick: true });
-            pw.changeHeadline(headline);
-            pw.addDescription(msg);
-            pw.show();
-            pw.startCloseTimer(5000);
+            this.Toast.notify(headline, msg, 5000);
         } catch (e) {}
     },
 
@@ -1159,14 +1387,10 @@ PdfCompanion = {
 
         this.log("Analyzing collection: " + collection.name + " (key: " + collection.key + ")");
 
-        let pw = new Zotero.ProgressWindow({ closeOnClick: false });
-        pw.changeHeadline("Maintenance - " + collection.name.substring(0, 25));
-        pw.show();
-
-        let stepItem = new pw.ItemProgress("chrome://zotero/skin/spinner-16px.png", "Connexion...");
+        let toast = this.Toast.progress("Maintenance - " + collection.name.substring(0, 25));
+        toast.update("Connexion...");
 
         try {
-            // Utilise l'endpoint zotero-manager existant
             let url = this.config.apiUrl + "/maintenance/collection/" +
                 encodeURIComponent(collection.key) + "/stream?limit=100";
 
@@ -1192,25 +1416,24 @@ PdfCompanion = {
                                 let data = JSON.parse(line.substring(6));
                                 self.log("SSE: " + JSON.stringify(data));
 
-                                // Events du maintenance stream
                                 switch (data.event) {
                                     case "populating_queue":
-                                        stepItem.setText("Récupération des articles...");
+                                        toast.update("Récupération des articles...");
                                         break;
                                     case "queue_populated":
                                         totalItems = data.result?.queued || 0;
-                                        stepItem.setText(totalItems + " articles à traiter");
+                                        toast.update(totalItems + " articles à traiter");
                                         break;
                                     case "processing_item":
                                         currentItem++;
                                         let title = (data.title || "").substring(0, 35);
-                                        stepItem.setText(currentItem + "/" + totalItems + " - " + title);
+                                        toast.update(currentItem + "/" + totalItems + " - " + title);
                                         break;
                                     case "item_completed":
-                                        stepItem.setText(currentItem + "/" + totalItems + " ✓");
+                                        toast.update(currentItem + "/" + totalItems + " done");
                                         break;
                                     case "item_failed":
-                                        stepItem.setText(currentItem + "/" + totalItems + " ✗ " + (data.error || "").substring(0, 30));
+                                        toast.update(currentItem + "/" + totalItems + " failed: " + (data.error || "").substring(0, 30));
                                         break;
                                     case "batch_completed":
                                         result = data;
@@ -1227,39 +1450,28 @@ PdfCompanion = {
                 xhr.onload = () => resolve(result);
                 xhr.onerror = () => reject(new Error("Connexion échouée"));
                 xhr.ontimeout = () => reject(new Error("Timeout"));
-                xhr.timeout = 1800000;  // 30 minutes max pour grosses collections
+                xhr.timeout = 1800000;
                 xhr.send();
             });
 
             if (!finalResult) {
-                stepItem.setIcon("chrome://zotero/skin/cross.png");
-                stepItem.setText("Pas de réponse du serveur");
-                pw.startCloseTimer(4000);
+                toast.error("Pas de réponse du serveur");
                 return;
             }
 
             if (finalResult.event === "batch_completed") {
                 let stats = finalResult.stats || {};
-                stepItem.setIcon("chrome://zotero/skin/tick.png");
-                stepItem.setText("Terminé: " + (stats.completed || 0) + " traités");
-                if (stats.failed > 0) {
-                    pw.addDescription(stats.failed + " échec(s)");
-                }
-                pw.startCloseTimer(5000);
-
-                // Sync to get new attachments
+                let msg = "Terminé: " + (stats.completed || 0) + " traités";
+                if (stats.failed > 0) msg += ", " + stats.failed + " échec(s)";
+                toast.success(msg);
                 try { Zotero.Sync.Runner.sync(); } catch (e) {}
             } else {
-                stepItem.setIcon("chrome://zotero/skin/cross.png");
-                stepItem.setText("Erreur: " + (finalResult.message || "Inconnue"));
-                pw.startCloseTimer(4000);
+                toast.error("Erreur: " + (finalResult.message || "Inconnue"));
             }
 
         } catch (e) {
             this.log("Collection maintenance error: " + e);
-            stepItem.setIcon("chrome://zotero/skin/cross.png");
-            stepItem.setText("Erreur: " + (e.message || "Connexion échouée"));
-            pw.startCloseTimer(4000);
+            toast.error("Erreur: " + (e.message || "Connexion échouée"));
         }
     },
 
@@ -1340,58 +1552,48 @@ PdfCompanion = {
 
         this.log("Importing " + filePaths.length + " PDFs into collection: " + collection.name);
 
-        let pw = new Zotero.ProgressWindow({ closeOnClick: false });
-        pw.changeHeadline("Import PDFs - " + collection.name.substring(0, 25));
-        pw.show();
+        let toast = this.Toast.progress("Import PDFs - " + collection.name.substring(0, 25));
 
         let imported = 0;
         let failed = 0;
-        let progressItems = [];
 
         for (let i = 0; i < filePaths.length; i++) {
             let filePath = filePaths[i];
             let file = Zotero.File.pathToFile(filePath);
             let filename = file.leafName;
 
-            let pi = new pw.ItemProgress("chrome://zotero/skin/spinner-16px.png",
-                (i + 1) + "/" + filePaths.length + " - " + filename + " - Ingestion...");
-            progressItems.push(pi);
+            toast.update((i + 1) + "/" + filePaths.length + " - " + filename + " - Ingestion...");
 
             try {
                 let result = await this.ingestPdfFile(filePath);
 
                 if (result && result.success && result.item_key) {
-                    pi.setText((i + 1) + "/" + filePaths.length + " - " + filename + " - Ajout collection...");
+                    toast.update((i + 1) + "/" + filePaths.length + " - " + filename + " - Ajout collection...");
 
                     try {
                         await this.addItemToCollection(result.item_key, collection.key);
                     } catch (e) {
                         this.log("addItemToCollection warning: " + e);
-                        // Non-blocking: item was created, collection assignment may fail
                     }
 
-                    let shortTitle = (result.metadata && result.metadata.title)
-                        ? result.metadata.title.substring(0, 40)
-                        : filename;
-                    pi.setIcon("chrome://zotero/skin/tick.png");
-                    pi.setText((i + 1) + "/" + filePaths.length + " ✓ " + shortTitle);
                     imported++;
                 } else {
                     let errMsg = (result && result.error) ? result.error : "Échec ingestion";
-                    pi.setIcon("chrome://zotero/skin/cross.png");
-                    pi.setText((i + 1) + "/" + filePaths.length + " ✗ " + filename + " - " + errMsg);
+                    toast.update((i + 1) + "/" + filePaths.length + " - " + filename + " - " + errMsg);
                     failed++;
                 }
             } catch (e) {
                 this.log("Import PDF error: " + e);
-                pi.setIcon("chrome://zotero/skin/cross.png");
-                pi.setText((i + 1) + "/" + filePaths.length + " ✗ " + filename + " - " + (e.message || "Erreur"));
                 failed++;
             }
         }
 
-        pw.addDescription("Terminé: " + imported + " importé(s), " + failed + " échec(s)");
-        pw.startCloseTimer(5000);
+        let summaryMsg = imported + " importé(s), " + failed + " échec(s)";
+        if (failed > 0) {
+            toast.error("Terminé: " + summaryMsg);
+        } else {
+            toast.success("Terminé: " + summaryMsg);
+        }
 
         if (imported > 0) {
             try { Zotero.Sync.Runner.sync(); } catch (e) {}
@@ -1528,10 +1730,8 @@ PdfCompanion = {
         let year = item.getField("year") || "";
         let subtitle = (authors ? authors : "") + (year ? " | " + year : "");
 
-        let pw = new Zotero.ProgressWindow({ closeOnClick: false });
-        pw.changeHeadline("Lectures - " + title.substring(0, 25));
-        pw.show();
-        let stepItem = new pw.ItemProgress("chrome://zotero/skin/spinner-16px.png", "Recherche des fiches...");
+        let toast = this.Toast.progress("Lectures - " + title.substring(0, 25));
+        toast.update("Recherche des fiches...");
 
         try {
             // 1. Get children
@@ -1546,15 +1746,12 @@ PdfCompanion = {
             });
 
             if (fiches.length === 0) {
-                stepItem.setIcon("chrome://zotero/skin/cross.png");
-                stepItem.setText("Aucune fiche trouvée");
-                pw.addDescription("Utilisez 'Lire l'article' pour créer une fiche.");
-                pw.startCloseTimer(4000);
+                toast.error("Aucune fiche trouvée - Utilisez 'Lire l'article' pour en créer une.");
                 return;
             }
 
             // 3. Download all MDs to get first line as description
-            stepItem.setText("Téléchargement de " + fiches.length + " fiche(s)...");
+            toast.update("Téléchargement de " + fiches.length + " fiche(s)...");
             let ficheData = [];
             for (let fiche of fiches) {
                 try {
@@ -1575,7 +1772,7 @@ PdfCompanion = {
                 }
             }
 
-            pw.close();
+            toast.close();
 
             if (ficheData.length === 0) {
                 this.showNotification("Erreur", "Impossible de télécharger les fiches");
@@ -1639,9 +1836,7 @@ PdfCompanion = {
 
         } catch (e) {
             this.log("showReadingCards error: " + e);
-            stepItem.setIcon("chrome://zotero/skin/cross.png");
-            stepItem.setText("Erreur: " + (e.message || "Connexion échouée"));
-            pw.startCloseTimer(4000);
+            toast.error("Erreur: " + (e.message || "Connexion échouée"));
         }
     },
 
@@ -1653,10 +1848,8 @@ PdfCompanion = {
             return;
         }
 
-        let pw = new Zotero.ProgressWindow({ closeOnClick: false });
-        pw.changeHeadline("Synthèses - " + collection.name.substring(0, 25));
-        pw.show();
-        let stepItem = new pw.ItemProgress("chrome://zotero/skin/spinner-16px.png", "Recherche des synthèses...");
+        let toast = this.Toast.progress("Synthèses - " + collection.name.substring(0, 25));
+        toast.update("Recherche des synthèses...");
 
         try {
             // 1. List collection items, filter reports with "Synthèse" in title
@@ -1671,15 +1864,12 @@ PdfCompanion = {
             });
 
             if (synthItems.length === 0) {
-                stepItem.setIcon("chrome://zotero/skin/cross.png");
-                stepItem.setText("Aucune synthèse trouvée");
-                pw.addDescription("Utilisez 'Synthèse de la collection' pour en créer une.");
-                pw.startCloseTimer(4000);
+                toast.error("Aucune synthèse trouvée - Utilisez 'Synthèse de la collection' pour en créer une.");
                 return;
             }
 
             // 2. For each synthesis, get children to find MD attachment + first line
-            stepItem.setText("Chargement de " + synthItems.length + " synthèse(s)...");
+            toast.update("Chargement de " + synthItems.length + " synthèse(s)...");
             let synthData = [];
 
             for (let si of synthItems) {
@@ -1719,7 +1909,7 @@ PdfCompanion = {
                 }
             }
 
-            pw.close();
+            toast.close();
 
             if (synthData.length === 0) {
                 this.showNotification("Erreur", "Impossible de charger les synthèses");
@@ -1780,9 +1970,7 @@ PdfCompanion = {
 
         } catch (e) {
             this.log("showCollectionSyntheses error: " + e);
-            stepItem.setIcon("chrome://zotero/skin/cross.png");
-            stepItem.setText("Erreur: " + (e.message || "Connexion échouée"));
-            pw.startCloseTimer(4000);
+            toast.error("Erreur: " + (e.message || "Connexion échouée"));
         }
     },
 

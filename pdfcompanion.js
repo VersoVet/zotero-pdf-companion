@@ -1435,16 +1435,15 @@ PdfCompanion = {
         this.log("Item: " + item.key + " | Focus: " + focus + " | Provider: " + provider);
 
         try {
-            // Build URL with proper parameter encoding
-            let params = new URLSearchParams();
-            params.set("zotero_key", item.key);
-            params.set("focus", focus);
-            params.set("provider", provider || "claude_cli");
-            params.set("store_to_dropbox", storeDropbox !== false);
-            params.set("link_to_zotero", linkZotero !== false);
-            params.set("use_cache", "true");
+            // Build URL like summarizePaper does (simple concatenation)
+            let url = this.config.paperReaderUrl + "/analyze/zotero/focused/stream?" +
+                "zotero_key=" + encodeURIComponent(item.key) +
+                "&focus=" + encodeURIComponent(focus) +
+                "&provider=" + encodeURIComponent(provider || "claude_cli") +
+                "&store_to_dropbox=" + (storeDropbox !== false ? "true" : "false") +
+                "&link_to_zotero=" + (linkZotero !== false ? "true" : "false") +
+                "&use_cache=true";
 
-            let url = this.config.paperReaderUrl + "/analyze/zotero/focused/stream?" + params.toString();
             this.log("URL: " + url.substring(0, 100) + "...");
 
             let self = this;

@@ -1429,6 +1429,7 @@ PdfCompanion = {
                 headers: { "Accept": "text/event-stream" },
                 timeout: 900000, // 15 minutes
                 responseType: "text",
+                ignoreErrors: true,  // Ignore SSL certificate errors for self-signed certs
                 requestObserver: function(xhr) {
                     xhr.onprogress = function() {
                         try {
@@ -1860,6 +1861,7 @@ PdfCompanion = {
                 headers: { "Accept": "text/event-stream" },
                 timeout: 900000, // 15 minutes
                 responseType: "text",
+                ignoreErrors: true,  // Ignore SSL certificate errors for self-signed certs
                 requestObserver: function(xhr) {
                     xhr.onprogress = function() {
                         let newData = xhr.responseText.substring(lastIndex);
@@ -1954,7 +1956,10 @@ PdfCompanion = {
 
         // Test paper-reader
         try {
-            let response = await Zotero.HTTP.request("GET", this.config.paperReaderUrl + "/health", { timeout: 5000 });
+            let response = await Zotero.HTTP.request("GET", this.config.paperReaderUrl + "/health", {
+                timeout: 5000,
+                ignoreErrors: true  // Ignore SSL certificate errors for self-signed certs
+            });
             let data = JSON.parse(response.responseText);
             if (data.status === "healthy") {
                 results.push("✓ Paper Reader: " + data.version);

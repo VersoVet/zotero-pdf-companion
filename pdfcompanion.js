@@ -49,6 +49,32 @@ PdfCompanion = {
         if (this.logBuffer.length > 100) this.logBuffer.shift();
     },
 
+    // Helper: Fetch wrapper for SSL self-signed cert handling
+    async safeFetch(url, options = {}) {
+        try {
+            // Use Zotero.HTTP.request instead of native fetch for SSL handling
+            let response = await Zotero.HTTP.request("GET", url, {
+                timeout: options.timeout || 15000,
+                responseType: "json",
+                ignoreErrors: true,  // Ignore SSL certificate errors
+                ...options
+            });
+            // Convert response to fetch-like interface
+            return {
+                ok: true,
+                json: async () => JSON.parse(response.responseText),
+                text: async () => response.responseText
+            };
+        } catch (e) {
+            this.log("safeFetch error for " + url + ": " + e.message);
+            return {
+                ok: false,
+                json: async () => ({ error: e.message }),
+                text: async () => e.message
+            };
+        }
+    },
+
     // === TOAST OVERLAY SYSTEM ===
     Toast: {
         _css: `

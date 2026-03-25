@@ -49,7 +49,26 @@ Trois modes de lecture via SSE (`/analyze/zotero-stream`) :
 | `full` | Lecture complete, fiche detaillee |
 | `section` | Analyse section par section |
 
-Genere une fiche de lecture Markdown attachee a l'item Zotero. Les fiches existantes sont consultables via le menu "Afficher les lectures" (ouverture dans une fenetre HTML formatee).
+Genere une fiche de lecture JSON attachee a l'item Zotero. Les fiches contiennent :
+- Synthese de l'objectif, methodologie, resultats, discussion
+- Points cles extraits avec citations sources
+- Metadonnees de l'article
+
+Les fiches existantes sont consultables via le menu "Afficher les lectures" (ouverture dans une fenetre HTML formatee avec sections colorees).
+
+### Extraction et affichage des figures (v4.5.3)
+
+Deux fonctionnalites pour les figures d'articles :
+
+**Extraire les figures** (`POST /extract-figures/{zotero_key}`) :
+- Extraction automatique des figures du PDF via Paper-Reader
+- Upload sur Dropbox dans le dossier de l'article
+- Creation d'un attachement JSON avec les metadonnees des figures
+
+**Afficher les figures** :
+- Galerie visuelle avec miniatures cliquables
+- Modal plein ecran pour chaque figure
+- Affichage du label, page et caption
 
 ### Maintenance de collection
 
@@ -95,6 +114,17 @@ Le plugin injecte trois menus dans l'UI Zotero :
 - **Tools > PDF Companion** : toutes les actions + test connexion + logs
 - **Clic-droit item > PDF Companion** : actions sur l'item selectionne
 - **Clic-droit collection > PDF Companion** : import, maintenance, synthese
+
+### Fenetre de logs (v4.5.2)
+
+Accessible via `Tools > PDF Companion > Show Logs`. Affiche les 100 dernieres entrees du buffer de log dans une fenetre dediee :
+
+- Zone scrollable avec style console sombre
+- Timestamps en surbrillance verte
+- Bouton **Copy to Clipboard** pour copier tout le log
+- Boutons **Scroll to Top/Bottom** pour navigation rapide
+- Auto-scroll vers le bas au chargement
+- Fenetre redimensionnable (900x600px)
 
 ### Systeme de notification : Toast Overlay (v4.5.0)
 

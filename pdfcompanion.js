@@ -34,8 +34,8 @@ PdfCompanion = {
     get config() {
         return {
             apiUrl: "http://" + this.getServerHost() + ":" + this.getServerPort(),
-            paperReaderUrl: "https://" + this.getServerHost() + ":" + this.paperReaderPort,  // Paper-Reader HTTPS:8462
-            paperReaderSecureUrl: "https://" + this.getServerHost() + ":" + this.paperReaderSecurePort,  // Alias
+            paperReaderUrl: "http://" + this.getServerHost() + ":8463",  // HTTP for SSE (avoids SSL cert issues)
+            paperReaderSecureUrl: "https://" + this.getServerHost() + ":" + this.paperReaderSecurePort,  // HTTPS:8462 if needed
             useScihub: true,
             triggerDelay: 10000
         };

@@ -1,6 +1,6 @@
 {
   "name": "zotero-pdf-companion-plugin",
-  "version": "4.9.21",
+  "version": "4.9.22",
   "core": {
     "display_name": "Zotero PDF Companion",
     "description": "Onyx bibliography management integration for Zotero - PDF recovery, metadata enrichment, paper reading, collection maintenance",

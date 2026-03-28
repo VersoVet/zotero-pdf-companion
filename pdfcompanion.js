@@ -441,7 +441,8 @@ PdfCompanion = {
                 { id: 'extract-figures-collection', label: 'Extraire figures (collection)', action: () => this.extractFiguresCollection() },
                 { id: 'sep1', separator: true },
                 { id: 'prisma-synthesis', label: 'Creer synthese PRISMA', action: () => this.createPrismaSynthesis() },
-                { id: 'synthesize-collection', label: 'Synthese Markdown', action: () => this.synthesizeCollection() }
+                { id: 'synthesize-collection', label: 'Synthese Markdown', action: () => this.synthesizeCollection() },
+                { id: 'pptx', label: 'Creer Presentation PPTX', action: () => this.generatePptxPresentation() }
             ];
 
             for (let item of items) {
@@ -6035,5 +6036,206 @@ PdfCompanion = {
         }, { once: true });
 
         this.log("Opened batch monitor window");
+    },
+
+    // === PPTX PRESENTATION GENERATION ===
+    generatePptxPresentation() {
+        let collection = this.getSelectedCollection();
+        if (!collection) {
+            this.showNotification("Erreur", "Sélectionnez une collection");
+            return;
+        }
+
+        let self = this;
+
+        let html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Présentation PPTX - ${this.escapeHtml(collection.name)}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0; padding: 20px;
+            background: #f5f7f5; color: #333;
+        }
+        h2 { color: #2d5a27; margin: 0 0 15px 0; font-size: 1.2em; }
+        .info-box {
+            background: #e8f5e9; border-left: 4px solid #2d5a27;
+            padding: 12px; margin-bottom: 15px; border-radius: 4px; font-size: 0.9em;
+        }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; font-weight: 500; margin-bottom: 4px; font-size: 0.9em; color: #555; }
+        input[type="text"] {
+            width: 100%; padding: 10px 12px; border: 1px solid #ccc;
+            border-radius: 6px; font-size: 0.95em;
+        }
+        input[type="text"]:focus { outline: none; border-color: #4a7c43; }
+        #btn-launch {
+            background: linear-gradient(135deg, #2d5a27, #4a7c43);
+            color: white; border: none; padding: 12px 24px;
+            border-radius: 8px; font-size: 1em; cursor: pointer;
+            width: 100%; margin-top: 8px; font-weight: 500;
+        }
+        #btn-launch:hover { opacity: 0.9; }
+        #btn-launch:disabled { opacity: 0.5; cursor: not-allowed; }
+        #sse-log {
+            margin-top: 15px; background: #1e1e1e; color: #d4d4d4;
+            border-radius: 8px; padding: 12px 15px; font-family: monospace;
+            font-size: 0.85em; height: 280px; overflow-y: auto;
+            display: none; white-space: pre-wrap; line-height: 1.4;
+        }
+        .log-info { color: #569cd6; }
+        .log-success { color: #6a9955; }
+        .log-running { color: #dcdcaa; }
+        .log-complete { color: #4ec9b0; font-weight: bold; }
+        .log-error { color: #f44747; }
+        .log-download { color: #569cd6; text-decoration: underline; cursor: pointer; }
+        .progress-bar {
+            width: 100%; height: 8px; background: #e0e0e0;
+            border-radius: 4px; margin-top: 10px; overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%; background: linear-gradient(90deg, #2d5a27, #4a7c43);
+            width: 0%; transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <h2>Présentation PPTX : ${this.escapeHtml(collection.name)}</h2>
+    <div class="info-box">
+        Génération d'une présentation PowerPoint à partir des articles de la collection.
+    </div>
+    <div class="form-group">
+        <label for="title">Titre de la présentation</label>
+        <input type="text" id="title" placeholder="Ex: Synthèse des articles...">
+    </div>
+    <button id="btn-launch">Lancer la génération</button>
+    <div class="progress-bar" id="progress-bar" style="display:none;">
+        <div class="progress-fill" id="progress-fill"></div>
+    </div>
+    <div id="sse-log"></div>
+</body>
+</html>`;
+
+        let win = Services.ww.openWindow(
+            null, "about:blank", "_blank",
+            "chrome,centerscreen,resizable=yes,scrollbars=yes,width=650,height=600",
+            null
+        );
+
+        win.addEventListener("load", () => {
+            win.document.open();
+            win.document.write(html);
+            win.document.close();
+            win.document.title = "Présentation PPTX - " + collection.name;
+
+            let btn = win.document.getElementById('btn-launch');
+            let titleInput = win.document.getElementById('title');
+            let logDiv = win.document.getElementById('sse-log');
+            let progressBar = win.document.getElementById('progress-bar');
+            let progressFill = win.document.getElementById('progress-fill');
+
+            btn.addEventListener('click', () => {
+                let title = titleInput.value.trim() || collection.name;
+
+                btn.disabled = true;
+                titleInput.disabled = true;
+                logDiv.style.display = 'block';
+                progressBar.style.display = 'block';
+
+                function appendLog(text, cssClass) {
+                    let span = win.document.createElement('span');
+                    span.className = cssClass || '';
+                    span.textContent = text + "\n";
+                    logDiv.appendChild(span);
+                    logDiv.scrollTop = logDiv.scrollHeight;
+                }
+
+                appendLog('[INFO] Envoi de la requête...', 'log-info');
+
+                // Step 1: Create the job
+                Zotero.HTTP.request("POST", "http://10.0.0.44:8480/api/generate/paper-reader", {
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        collection_key: collection.key,
+                        collection_name: collection.name,
+                        title: title
+                    }),
+                    timeout: 10000
+                }).then(resp => {
+                    let r = (typeof resp === 'string') ? resp : (resp.responseText || resp.response || JSON.stringify(resp));
+                    let job = JSON.parse(r);
+                    let jobId = job.job_id;
+
+                    appendLog('[✓] Job créé: ' + jobId, 'log-success');
+                    self.log("[PPTX] Job ID: " + jobId);
+
+                    // Step 2: Poll the status every 3 seconds
+                    let pollCount = 0;
+                    let pollInterval = setInterval(() => {
+                        pollCount++;
+
+                        Zotero.HTTP.request("GET", "http://10.0.0.44:8480/api/generate/" + jobId + "/status", {
+                            timeout: 5000
+                        }).then(statusResp => {
+                            let sr = (typeof statusResp === 'string') ? statusResp : (statusResp.responseText || statusResp.response || JSON.stringify(statusResp));
+                            let status = JSON.parse(sr);
+
+                            let progress = status.progress || 0;
+                            let step = status.current_step || '-';
+                            let statusText = status.status || 'unknown';
+
+                            appendLog('[POLL ' + pollCount + '] status=' + statusText + ' | step=' + step + ' | progress=' + progress + '%', 'log-running');
+                            progressFill.style.width = progress + '%';
+
+                            self.log("[PPTX] [" + pollCount + "] " + statusText + " - " + step + " (" + progress + "%)");
+
+                            if (statusText === "completed") {
+                                clearInterval(pollInterval);
+                                progressFill.style.width = '100%';
+                                let downloadUrl = "http://10.0.0.44:8480/api/download/" + jobId;
+                                appendLog('\n[✓] COMPLETED!', 'log-complete');
+                                appendLog('Download: ' + downloadUrl, 'log-download');
+
+                                let downloadSpan = win.document.createElement('span');
+                                downloadSpan.className = 'log-download';
+                                downloadSpan.textContent = downloadUrl;
+                                downloadSpan.style.cursor = 'pointer';
+                                downloadSpan.addEventListener('click', () => {
+                                    Services.ww.openWindow(null, downloadUrl, "_blank", "", null);
+                                });
+                                logDiv.appendChild(downloadSpan);
+                                logDiv.scrollTop = logDiv.scrollHeight;
+
+                                self.log("[PPTX] ✓ DONE! " + downloadUrl);
+                            } else if (statusText === "failed" || statusText === "error") {
+                                clearInterval(pollInterval);
+                                let errorMsg = status.error || 'Unknown error';
+                                appendLog('\n[✗] ERROR: ' + errorMsg, 'log-error');
+                                appendLog('', '');
+                                appendLog('Please check the server logs for details.', 'log-error');
+                                appendLog('', '');
+                                btn.disabled = false;
+                                titleInput.disabled = false;
+                                self.log("[PPTX] ✗ FAILED: " + errorMsg);
+                            }
+                        }).catch(e => {
+                            appendLog('[✗] Poll error: ' + e.message, 'log-error');
+                            self.log("[PPTX] Poll error: " + e);
+                        });
+
+                    }, 3000);  // Poll every 3 seconds
+
+                }).catch(e => {
+                    appendLog('[✗] Erreur: ' + e.message, 'log-error');
+                    logDiv.scrollTop = logDiv.scrollHeight;
+                    btn.disabled = false;
+                    titleInput.disabled = false;
+                    self.log("[PPTX] Error: " + e);
+                });
+            });
+        }, { once: true });
     }
 };

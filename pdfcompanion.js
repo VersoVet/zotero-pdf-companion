@@ -6197,19 +6197,59 @@ PdfCompanion = {
                                 progressFill.style.width = '100%';
                                 let downloadUrl = "http://10.0.0.44:8480/api/download/" + jobId;
                                 appendLog('\n[✓] COMPLETED!', 'log-complete');
-                                appendLog('Download: ' + downloadUrl, 'log-download');
+                                appendLog('[INFO] Attaching to Zotero...', 'log-info');
 
-                                let downloadSpan = win.document.createElement('span');
-                                downloadSpan.className = 'log-download';
-                                downloadSpan.textContent = downloadUrl;
-                                downloadSpan.style.cursor = 'pointer';
-                                downloadSpan.addEventListener('click', () => {
-                                    Services.ww.openWindow(null, downloadUrl, "_blank", "", null);
+                                // Attach to "Synthèses & Productions" item (K5D5C5NB)
+                                Zotero.HTTP.request("POST", "http://10.0.0.44:8331/item/K5D5C5NB/attachment", {
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                        url: downloadUrl,
+                                        title: "Présentation PPTX - " + (title || collection.name),
+                                        contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                                        tags: ["pptx"],
+                                        linkMode: "linked_url"
+                                    }),
+                                    timeout: 30000
+                                }).then(attachResp => {
+                                    let ar = (typeof attachResp === 'string') ? attachResp : (attachResp.responseText || attachResp.response || JSON.stringify(attachResp));
+                                    let attachResult = JSON.parse(ar);
+
+                                    if (attachResult.status === "success" || attachResult.success) {
+                                        appendLog('[✓] Attached to item K5D5C5NB with tag #pptx', 'log-success');
+                                        self.log("[PPTX] ✓ Attached to Synthèses & Productions");
+                                    } else {
+                                        appendLog('[⚠] Attachment status: ' + (attachResult.status || 'unknown'), 'log-running');
+                                        self.log("[PPTX] Attachment: " + JSON.stringify(attachResult));
+                                    }
+
+                                    appendLog('\nDownload: ' + downloadUrl, 'log-download');
+                                    let downloadSpan = win.document.createElement('span');
+                                    downloadSpan.className = 'log-download';
+                                    downloadSpan.textContent = downloadUrl;
+                                    downloadSpan.style.cursor = 'pointer';
+                                    downloadSpan.addEventListener('click', () => {
+                                        Services.ww.openWindow(null, downloadUrl, "_blank", "", null);
+                                    });
+                                    logDiv.appendChild(downloadSpan);
+                                    logDiv.scrollTop = logDiv.scrollHeight;
+
+                                    self.log("[PPTX] ✓ DONE! " + downloadUrl);
+                                }).catch(e => {
+                                    appendLog('[⚠] Attachment error: ' + e.message, 'log-running');
+                                    appendLog('Download: ' + downloadUrl, 'log-download');
+
+                                    let downloadSpan = win.document.createElement('span');
+                                    downloadSpan.className = 'log-download';
+                                    downloadSpan.textContent = downloadUrl;
+                                    downloadSpan.style.cursor = 'pointer';
+                                    downloadSpan.addEventListener('click', () => {
+                                        Services.ww.openWindow(null, downloadUrl, "_blank", "", null);
+                                    });
+                                    logDiv.appendChild(downloadSpan);
+                                    logDiv.scrollTop = logDiv.scrollHeight;
+
+                                    self.log("[PPTX] ⚠ Attachment failed, but PPTX ready: " + downloadUrl);
                                 });
-                                logDiv.appendChild(downloadSpan);
-                                logDiv.scrollTop = logDiv.scrollHeight;
-
-                                self.log("[PPTX] ✓ DONE! " + downloadUrl);
                             } else if (statusText === "failed" || statusText === "error") {
                                 clearInterval(pollInterval);
                                 let errorMsg = status.error || 'Unknown error';

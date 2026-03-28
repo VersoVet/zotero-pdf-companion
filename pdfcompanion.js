@@ -6206,7 +6206,7 @@ PdfCompanion = {
                                         url: downloadUrl,
                                         title: "Présentation PPTX - " + (title || collection.name),
                                         contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                                        tags: ["pptx"],
+                                        tags: ["#pptx"],
                                         linkMode: "linked_url"
                                     }),
                                     timeout: 30000

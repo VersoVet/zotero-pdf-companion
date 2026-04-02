@@ -523,6 +523,13 @@ PdfCompanion = {
             synthesisItem.addEventListener('command', () => this.openSynthesisDialog());
             menupopup.appendChild(synthesisItem);
 
+            // Menu item "Synthèse PRISMA" - opens dialog
+            let prismaItem = doc.createXULElement('menuitem');
+            prismaItem.id = 'pdfcompanion-collection-prisma-synthesis';
+            prismaItem.setAttribute('label', 'Synthese PRISMA...');
+            prismaItem.addEventListener('command', () => this.openPrismaDialog());
+            menupopup.appendChild(prismaItem);
+
             let items = [
                 { id: 'sep0', separator: true },
                 { id: 'synthesize-collection-v2', label: 'Synthèse Collection', action: () => this.synthesizeCollectionV2() }
@@ -3254,6 +3261,419 @@ PdfCompanion = {
             if (errMsg.includes("No fiches") || errMsg.includes("fiches found") || errMsg.includes("No analyzed")) {
                 this.showNotification("Pas de fiches",
                     "Utilisez d'abord 'Lire l'article' sur les items de cette collection.");
+            } else {
+                this.showNotification("Erreur PRISMA", errMsg.substring(0, 100));
+            }
+        }
+    },
+
+    // === PRISMA SYNTHESIS V2 DIALOG ===
+    async openPrismaDialog() {
+        let collection = this.getSelectedCollection();
+        if (!collection) {
+            this.showNotification("PDF Companion", "Selectionnez une collection");
+            return;
+        }
+
+        let collectionName = collection.name;
+        let self = this;
+
+        let html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Synthese PRISMA</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #1e1e1e;
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: linear-gradient(135deg, #5a272d 0%, #7c4349 100%);
+            color: white;
+            padding: 18px 22px;
+            flex-shrink: 0;
+        }
+        .header h1 {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .header .subtitle {
+            font-size: 0.85em;
+            opacity: 0.9;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .form-container {
+            padding: 18px 22px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .form-group > label {
+            font-weight: 600;
+            font-size: 0.9em;
+            color: #b0b0b0;
+            margin-bottom: 4px;
+        }
+        .radio-group {
+            background: #2a2a2a;
+            border-radius: 6px;
+            padding: 8px 12px;
+        }
+        .radio-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 4px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .radio-item:hover {
+            background: #353535;
+        }
+        .radio-item input[type="radio"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #7c4349;
+            cursor: pointer;
+        }
+        .radio-item label {
+            cursor: pointer;
+            font-size: 0.9em;
+            color: #e0e0e0;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: #2a2a2a;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .checkbox-group:hover {
+            background: #353535;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #7c4349;
+            cursor: pointer;
+        }
+        .checkbox-label {
+            font-size: 0.9em;
+            color: #e0e0e0;
+        }
+        .input-group {
+            background: #2a2a2a;
+            border-radius: 6px;
+            padding: 12px;
+        }
+        .input-group input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            background: #1e1e1e;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #e0e0e0;
+            font-size: 0.9em;
+        }
+        .input-group input[type="text"]:focus {
+            outline: none;
+            border-color: #7c4349;
+        }
+        .input-group input[type="text"]:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .button-row {
+            display: flex;
+            gap: 10px;
+            padding: 16px 22px;
+            background: #252525;
+            border-top: 1px solid #333;
+            flex-shrink: 0;
+        }
+        .btn {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #5a272d 0%, #7c4349 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(124, 67, 73, 0.4);
+        }
+        .btn-secondary {
+            background: #3c3c3c;
+            color: #e0e0e0;
+            border: 1px solid #555;
+        }
+        .btn-secondary:hover {
+            background: #4a4a4a;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Synthese PRISMA</h1>
+        <div class="subtitle" title="${this.escapeHtml(collectionName)}">${this.escapeHtml(collectionName.length > 45 ? collectionName.substring(0, 45) + "..." : collectionName)}</div>
+    </div>
+    <div class="form-container">
+        <div class="form-group">
+            <label>Mode de lecture</label>
+            <div class="radio-group">
+                <div class="radio-item">
+                    <input type="radio" name="lectureMode" id="modeStandard" value="standard" checked>
+                    <label for="modeStandard">Standard - Analyse rapide</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="lectureMode" id="modeFull" value="full">
+                    <label for="modeFull">Complete - Analyse approfondie</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="lectureMode" id="modeThesis" value="thesis">
+                    <label for="modeThesis">These - Qualite doctorale</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="lectureMode" id="modeFocus" value="focus">
+                    <label for="modeFocus">Focus - Sujet specifique</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group" id="focusGroup" style="display: none;">
+            <label>Sujet de focus</label>
+            <div class="input-group">
+                <input type="text" id="focusInput" placeholder="Ex: biomarqueurs, traitement, diagnostic..." />
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Modele LLM</label>
+            <div class="radio-group">
+                <div class="radio-item">
+                    <input type="radio" name="provider" id="providerClaude" value="claude_cli">
+                    <label for="providerClaude">Claude (CLI) - Recommande</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="provider" id="providerSambanova" value="sambanova" checked>
+                    <label for="providerSambanova">SambaNova - Rapide</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="provider" id="providerGroq" value="groq">
+                    <label for="providerGroq">Groq - Tres rapide</label>
+                </div>
+            </div>
+        </div>
+
+        <label class="checkbox-group" for="chkLecture">
+            <input type="checkbox" id="chkLecture" checked>
+            <span class="checkbox-label">Analyser les articles sans fiche de lecture</span>
+        </label>
+
+        <label class="checkbox-group" for="chkReplace">
+            <input type="checkbox" id="chkReplace">
+            <span class="checkbox-label">Remplacer les syntheses existantes</span>
+        </label>
+    </div>
+    <div class="button-row">
+        <button class="btn btn-secondary" onclick="window.close()">Annuler</button>
+        <button class="btn btn-primary" onclick="startPrisma()">Generer PRISMA</button>
+    </div>
+    <script>
+        // Show/hide focus input based on mode selection
+        document.querySelectorAll('input[name="lectureMode"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                let focusGroup = document.getElementById('focusGroup');
+                let focusInput = document.getElementById('focusInput');
+                if (this.value === 'focus') {
+                    focusGroup.style.display = 'flex';
+                    focusInput.disabled = false;
+                } else {
+                    focusGroup.style.display = 'none';
+                    focusInput.disabled = true;
+                }
+            });
+        });
+
+        function getSelectedRadio(name) {
+            let radios = document.getElementsByName(name);
+            for (let i = 0; i < radios.length; i++) {
+                if (radios[i].checked) return radios[i].value;
+            }
+            return null;
+        }
+
+        function startPrisma() {
+            let lectureMode = getSelectedRadio('lectureMode') || 'standard';
+            let provider = getSelectedRadio('provider') || 'sambanova';
+            let lecture = document.getElementById('chkLecture').checked;
+            let replace = document.getElementById('chkReplace').checked;
+            let focus = null;
+
+            if (lectureMode === 'focus') {
+                focus = document.getElementById('focusInput').value.trim();
+                if (!focus) {
+                    alert('Veuillez specifier un sujet de focus');
+                    return;
+                }
+            }
+
+            if (window.pdfCompanionCallback) {
+                window.pdfCompanionCallback(lectureMode, provider, lecture, replace, focus);
+            }
+            window.close();
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                startPrisma();
+            } else if (e.key === 'Escape') {
+                window.close();
+            }
+        });
+    </script>
+</body>
+</html>`;
+
+        try {
+            let win = Services.ww.openWindow(
+                null,
+                "about:blank",
+                "_blank",
+                "chrome,centerscreen,resizable=yes,width=480,height=680",
+                null
+            );
+
+            win.addEventListener("load", () => {
+                win.document.open();
+                win.document.write(html);
+                win.document.close();
+                win.document.title = "Synthese PRISMA";
+
+                win.pdfCompanionCallback = async (lectureMode, provider, lecture, replace, focus) => {
+                    self.log("PRISMA dialog: mode=" + lectureMode + ", provider=" + provider +
+                            ", lecture=" + lecture + ", replace=" + replace + ", focus=" + focus);
+                    await self.runPrismaSynthesisV2(collection, lectureMode, provider, lecture, replace, focus);
+                };
+            }, { once: true });
+
+            this.log("Opened PRISMA dialog for collection: " + collectionName);
+        } catch (e) {
+            this.log("openPrismaDialog error: " + e);
+            this.showNotification("Erreur", "Impossible d'ouvrir le dialog: " + e.message);
+        }
+    },
+
+    async runPrismaSynthesisV2(collection, lectureMode, provider, lecture, replace, focus) {
+        let toast = this.Toast.progress("PRISMA - " + collection.name.substring(0, 25));
+        toast.update("Demarrage...");
+
+        let self = this;
+        let finalFilename = null;
+
+        try {
+            // Build URL with parameters
+            let url = this.config.paperReaderUrl + "/synthesize/collection/" +
+                encodeURIComponent(collection.key) + "/prisma-v2/stream?" +
+                "lecture_mode=" + encodeURIComponent(lectureMode) +
+                "&lecture=" + (lecture ? "true" : "false") +
+                "&replace=" + (replace ? "true" : "false") +
+                "&provider=" + encodeURIComponent(provider);
+
+            if (focus) {
+                url += "&focus=" + encodeURIComponent(focus);
+            }
+
+            this.log("GET PRISMA-v2 stream: " + url);
+
+            await new Promise((resolve, reject) => {
+                let xhr = new XMLHttpRequest();
+                xhr.open("GET", url, true);
+                xhr.timeout = 600000; // 10 minutes
+
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve(xhr.responseText);
+                    } else {
+                        reject(new Error("HTTP " + xhr.status + ": " + xhr.responseText));
+                    }
+                };
+
+                xhr.onerror = () => reject(new Error("Network error"));
+                xhr.ontimeout = () => reject(new Error("Timeout"));
+
+                let buffer = "";
+                xhr.onprogress = () => {
+                    buffer += xhr.responseText.substring(buffer.length);
+                    let lines = buffer.split("\n");
+
+                    for (let i = 0; i < lines.length - 1; i++) {
+                        let line = lines[i].trim();
+                        if (line.startsWith("data: ")) {
+                            try {
+                                let data = JSON.parse(line.substring(6));
+                                self.log("PRISMA-v2 SSE: " + data.stage + " - " + data.message);
+
+                                if (data.stage === "error") {
+                                    toast.error(data.message);
+                                    reject(new Error(data.message));
+                                    return;
+                                } else if (data.stage === "complete") {
+                                    finalFilename = data.filename || null;
+                                    toast.success("Generation terminee!");
+                                } else {
+                                    toast.update(data.message);
+                                }
+                            } catch (parseErr) {
+                                self.log("SSE parse error: " + parseErr);
+                            }
+                        }
+                    }
+                };
+
+                xhr.send();
+            });
+
+            if (finalFilename) {
+                this.showNotification("PRISMA genere",
+                    "Document: " + finalFilename + "\nAttache a la collection");
+            } else {
+                toast.success("Synthese PRISMA terminee");
+            }
+
+        } catch (e) {
+            toast.close();
+            this.log("runPrismaSynthesisV2 error: " + e);
+
+            let errMsg = e.message || "Connexion echouee";
+            if (errMsg.includes("No fiches") || errMsg.includes("fiches found") || errMsg.includes("No analyzed")) {
+                this.showNotification("Pas de fiches",
+                    "Activez 'Analyser les articles' ou utilisez d'abord 'Lire l'article' sur les items.");
             } else {
                 this.showNotification("Erreur PRISMA", errMsg.substring(0, 100));
             }

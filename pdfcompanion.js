@@ -12,8 +12,7 @@ PdfCompanion = {
     // Default values
     defaultHost: "10.0.0.44",
     defaultPort: 8451,
-    paperReaderPort: 8462,  // Paper-Reader HTTPS port (univocal, HTTPS sur 8462)
-    paperReaderSecurePort: 8462,  // Alias pour clarté
+    paperReaderPort: 8462,  // Paper-Reader HTTP port
 
     getServerHost() {
         try {
@@ -34,8 +33,7 @@ PdfCompanion = {
     get config() {
         return {
             apiUrl: "http://" + this.getServerHost() + ":" + this.getServerPort(),
-            paperReaderUrl: "http://" + this.getServerHost() + ":8463",  // HTTP for SSE (avoids SSL cert issues)
-            paperReaderSecureUrl: "https://" + this.getServerHost() + ":" + this.paperReaderSecurePort,  // HTTPS:8462 if needed
+            paperReaderUrl: "http://" + this.getServerHost() + ":" + this.paperReaderPort,  // Paper-Reader HTTP:8462 (100% HTTP)
             useScihub: true,
             triggerDelay: 10000
         };
@@ -328,38 +326,98 @@ PdfCompanion = {
             analyzeItem.addEventListener('command', () => this.openLectureDialog());
             menupopup.appendChild(analyzeItem);
 
-            // Other menu items
-            let items = [
-                { id: 'fetch', label: 'Telecharger le PDF', action: () => this.fetchPdfForSelected() },
-                { id: 'local', label: 'Joindre un PDF', action: () => this.attachLocalPdfForSelected() },
-                { id: 'replace', label: 'Remplacer un PDF', action: () => this.replacePdfForSelected() },
-                { id: 'enrich', label: 'Enrichir metadonnees', action: () => this.enrichMetadataForSelected() },
-                { id: 'showfiches', label: 'Afficher les lectures', action: () => this.showReadingCards() },
-                { id: 'lecturefocus', label: 'Lecture focus...', action: () => this.openFocusedLectureDialog() },
-                { id: 'sep1', separator: true },
-                { id: 'extractfig', label: 'Extraire les figures', action: () => this.extractFiguresForSelected() },
-                { id: 'showfig', label: 'Afficher les figures', action: () => this.showFigures() },
-                { id: 'sep2', separator: true },
-                { id: 'batchmonitor', label: 'Moniteur de lectures', action: () => this.openBatchMonitor() },
-                { id: 'sep3', separator: true },
-                { id: 'copyid', label: 'Copy Item ID', action: () => this.copyItemId() },
-                { id: 'test', label: 'Test Connection', action: () => this.testConnection() },
-                { id: 'logs', label: 'Show Logs', action: () => this.showLogs() }
+            // === Submenu: Lecture ===
+            let toolsLectureMenu = doc.createXULElement('menu');
+            toolsLectureMenu.id = 'pdfcompanion-tools-lecture';
+            toolsLectureMenu.setAttribute('label', 'Lecture');
+            let toolsLecturePopup = doc.createXULElement('menupopup');
+            let toolsLectureItems = [
+                { id: 'lecturecomplete', label: 'Lecture complete', action: () => this.openLectureDialog() },
+                { id: 'lecturefocus', label: 'Lecture focale', action: () => this.openFocusedLectureDialog() },
+                { id: 'showfiches', label: 'Afficher les lectures', action: () => this.showReadingCards() }
             ];
-
-            for (let item of items) {
-                if (item.separator) {
-                    let sep = doc.createXULElement('menuseparator');
-                    sep.id = 'pdfcompanion-tools-' + item.id;
-                    menupopup.appendChild(sep);
-                } else {
-                    let menuitem = doc.createXULElement('menuitem');
-                    menuitem.id = 'pdfcompanion-tools-' + item.id;
-                    menuitem.setAttribute('label', item.label);
-                    menuitem.addEventListener('command', item.action);
-                    menupopup.appendChild(menuitem);
-                }
+            for (let item of toolsLectureItems) {
+                let menuitem = doc.createXULElement('menuitem');
+                menuitem.id = 'pdfcompanion-tools-' + item.id;
+                menuitem.setAttribute('label', item.label);
+                menuitem.addEventListener('command', item.action);
+                toolsLecturePopup.appendChild(menuitem);
             }
+            toolsLectureMenu.appendChild(toolsLecturePopup);
+            menupopup.appendChild(toolsLectureMenu);
+
+            // === Submenu: Maintenance ===
+            let toolsMaintenanceMenu = doc.createXULElement('menu');
+            toolsMaintenanceMenu.id = 'pdfcompanion-tools-maintenance';
+            toolsMaintenanceMenu.setAttribute('label', 'Maintenance');
+            let toolsMaintenancePopup = doc.createXULElement('menupopup');
+            let toolsMaintenanceItems = [
+                { id: 'enrich', label: 'Enrichir', action: () => this.enrichMetadataForSelected() },
+                { id: 'fetch', label: 'Telecharger un PDF', action: () => this.fetchPdfForSelected() },
+                { id: 'local', label: 'Joindre un PDF', action: () => this.attachLocalPdfForSelected() },
+                { id: 'replace', label: 'Remplacer un PDF', action: () => this.replacePdfForSelected() }
+            ];
+            for (let item of toolsMaintenanceItems) {
+                let menuitem = doc.createXULElement('menuitem');
+                menuitem.id = 'pdfcompanion-tools-' + item.id;
+                menuitem.setAttribute('label', item.label);
+                menuitem.addEventListener('command', item.action);
+                toolsMaintenancePopup.appendChild(menuitem);
+            }
+            toolsMaintenanceMenu.appendChild(toolsMaintenancePopup);
+            menupopup.appendChild(toolsMaintenanceMenu);
+
+            // === Submenu: Iconographie ===
+            let toolsIconMenu = doc.createXULElement('menu');
+            toolsIconMenu.id = 'pdfcompanion-tools-iconography';
+            toolsIconMenu.setAttribute('label', 'Iconographie');
+            let toolsIconPopup = doc.createXULElement('menupopup');
+            let toolsIconItems = [
+                { id: 'extractfig', label: 'Extraire les figures', action: () => this.extractFiguresForSelected() },
+                { id: 'showfig', label: 'Afficher les figures', action: () => this.showFigures() }
+            ];
+            for (let item of toolsIconItems) {
+                let menuitem = doc.createXULElement('menuitem');
+                menuitem.id = 'pdfcompanion-tools-' + item.id;
+                menuitem.setAttribute('label', item.label);
+                menuitem.addEventListener('command', item.action);
+                toolsIconPopup.appendChild(menuitem);
+            }
+            toolsIconMenu.appendChild(toolsIconPopup);
+            menupopup.appendChild(toolsIconMenu);
+
+            // === Other items ===
+            let sep = doc.createXULElement('menuseparator');
+            sep.id = 'pdfcompanion-tools-sep1';
+            menupopup.appendChild(sep);
+
+            let batchMonitorItem = doc.createXULElement('menuitem');
+            batchMonitorItem.id = 'pdfcompanion-tools-batchmonitor';
+            batchMonitorItem.setAttribute('label', 'Moniteur de lectures');
+            batchMonitorItem.addEventListener('command', () => this.openBatchMonitor());
+            menupopup.appendChild(batchMonitorItem);
+
+            let sep2 = doc.createXULElement('menuseparator');
+            sep2.id = 'pdfcompanion-tools-sep2';
+            menupopup.appendChild(sep2);
+
+            let copyItem = doc.createXULElement('menuitem');
+            copyItem.id = 'pdfcompanion-tools-copyid';
+            copyItem.setAttribute('label', 'Copy Item ID');
+            copyItem.addEventListener('command', () => this.copyItemId());
+            menupopup.appendChild(copyItem);
+
+            let testItem = doc.createXULElement('menuitem');
+            testItem.id = 'pdfcompanion-tools-test';
+            testItem.setAttribute('label', 'Test Connection');
+            testItem.addEventListener('command', () => this.testConnection());
+            menupopup.appendChild(testItem);
+
+            let logsItem = doc.createXULElement('menuitem');
+            logsItem.id = 'pdfcompanion-tools-logs';
+            logsItem.setAttribute('label', 'Show Logs');
+            logsItem.addEventListener('command', () => this.showLogs());
+            menupopup.appendChild(logsItem);
 
             submenu.appendChild(menupopup);
             toolsPopup.appendChild(submenu);
@@ -383,32 +441,65 @@ PdfCompanion = {
             ctxAnalyzeItem.addEventListener('command', () => this.openLectureDialog());
             menupopup.appendChild(ctxAnalyzeItem);
 
-            // Other context menu items
-            let items = [
-                { id: 'fetch', label: 'Telecharger le PDF', action: () => this.fetchPdfForSelected() },
+            // === Submenu: Lecture ===
+            let lectureMenu = doc.createXULElement('menu');
+            lectureMenu.id = 'pdfcompanion-context-lecture';
+            lectureMenu.setAttribute('label', 'Lecture');
+            let lecturePopup = doc.createXULElement('menupopup');
+            let lectureItems = [
+                { id: 'lecturecomplete', label: 'Lecture complete', action: () => this.openLectureDialog() },
+                { id: 'lecturefocus', label: 'Lecture focale', action: () => this.openFocusedLectureDialog() },
+                { id: 'showfiches', label: 'Afficher les lectures', action: () => this.showReadingCards() }
+            ];
+            for (let item of lectureItems) {
+                let menuitem = doc.createXULElement('menuitem');
+                menuitem.id = 'pdfcompanion-context-' + item.id;
+                menuitem.setAttribute('label', item.label);
+                menuitem.addEventListener('command', item.action);
+                lecturePopup.appendChild(menuitem);
+            }
+            lectureMenu.appendChild(lecturePopup);
+            menupopup.appendChild(lectureMenu);
+
+            // === Submenu: Maintenance ===
+            let maintenanceMenu = doc.createXULElement('menu');
+            maintenanceMenu.id = 'pdfcompanion-context-maintenance';
+            maintenanceMenu.setAttribute('label', 'Maintenance');
+            let maintenancePopup = doc.createXULElement('menupopup');
+            let maintenanceItems = [
+                { id: 'enrich', label: 'Enrichir', action: () => this.enrichMetadataForSelected() },
+                { id: 'fetch', label: 'Telecharger un PDF', action: () => this.fetchPdfForSelected() },
                 { id: 'local', label: 'Joindre un PDF', action: () => this.attachLocalPdfForSelected() },
-                { id: 'replace', label: 'Remplacer un PDF', action: () => this.replacePdfForSelected() },
-                { id: 'enrich', label: 'Enrichir metadonnees', action: () => this.enrichMetadataForSelected() },
-                { id: 'showfiches', label: 'Afficher les lectures', action: () => this.showReadingCards() },
-                { id: 'lecturefocus', label: 'Lecture focus...', action: () => this.openFocusedLectureDialog() },
-                { id: 'sep1', separator: true },
+                { id: 'replace', label: 'Remplacer un PDF', action: () => this.replacePdfForSelected() }
+            ];
+            for (let item of maintenanceItems) {
+                let menuitem = doc.createXULElement('menuitem');
+                menuitem.id = 'pdfcompanion-context-' + item.id;
+                menuitem.setAttribute('label', item.label);
+                menuitem.addEventListener('command', item.action);
+                maintenancePopup.appendChild(menuitem);
+            }
+            maintenanceMenu.appendChild(maintenancePopup);
+            menupopup.appendChild(maintenanceMenu);
+
+            // === Submenu: Iconographie ===
+            let iconMenu = doc.createXULElement('menu');
+            iconMenu.id = 'pdfcompanion-context-iconography';
+            iconMenu.setAttribute('label', 'Iconographie');
+            let iconPopup = doc.createXULElement('menupopup');
+            let iconItems = [
                 { id: 'extractfig', label: 'Extraire les figures', action: () => this.extractFiguresForSelected() },
                 { id: 'showfig', label: 'Afficher les figures', action: () => this.showFigures() }
             ];
-
-            for (let item of items) {
-                if (item.separator) {
-                    let sep = doc.createXULElement('menuseparator');
-                    sep.id = 'pdfcompanion-context-' + item.id;
-                    menupopup.appendChild(sep);
-                } else {
-                    let menuitem = doc.createXULElement('menuitem');
-                    menuitem.id = 'pdfcompanion-context-' + item.id;
-                    menuitem.setAttribute('label', item.label);
-                    menuitem.addEventListener('command', item.action);
-                    menupopup.appendChild(menuitem);
-                }
+            for (let item of iconItems) {
+                let menuitem = doc.createXULElement('menuitem');
+                menuitem.id = 'pdfcompanion-context-' + item.id;
+                menuitem.setAttribute('label', item.label);
+                menuitem.addEventListener('command', item.action);
+                iconPopup.appendChild(menuitem);
             }
+            iconMenu.appendChild(iconPopup);
+            menupopup.appendChild(iconMenu);
 
             submenu.appendChild(menupopup);
             itemMenu.appendChild(submenu);
@@ -434,15 +525,7 @@ PdfCompanion = {
 
             let items = [
                 { id: 'sep0', separator: true },
-                { id: 'collection-summary', label: 'Ouvrir Collection Summary', action: () => this.openCollectionSummary() },
-                { id: 'import-pdfs', label: 'Importer des PDFs', action: () => this.importPdfsToCollection() },
-                { id: 'maintain-collection', label: 'Maintenance collection', action: () => this.analyzeCollection() },
-                { id: 'batch-reading', label: 'Lecture complete', action: () => this.startBatchReading() },
-                { id: 'extract-figures-collection', label: 'Extraire figures (collection)', action: () => this.extractFiguresCollection() },
-                { id: 'sep1', separator: true },
-                { id: 'prisma-synthesis', label: 'Creer synthese PRISMA', action: () => this.createPrismaSynthesis() },
-                { id: 'synthesize-collection', label: 'Synthese Markdown', action: () => this.synthesizeCollection() },
-                { id: 'pptx', label: 'Creer Presentation PPTX', action: () => this.generatePptxPresentation() }
+                { id: 'synthesize-collection-v2', label: 'Synthèse Collection', action: () => this.synthesizeCollectionV2() }
             ];
 
             for (let item of items) {
@@ -538,22 +621,10 @@ PdfCompanion = {
                 let itemType = Zotero.ItemTypes.getName(item.itemTypeID);
                 if (!["journalArticle", "conferencePaper", "preprint", "book", "thesis"].includes(itemType)) continue;
                 let title = item.getField("title") || "Unknown";
-                let hasPdf = await this.itemHasPdfAttachment(item);
 
-                // Always enrich first (may find and attach a PDF)
-                this.log("Enriching: " + title + (hasPdf ? " (PDF present)" : " (no PDF)"));
+                // Enrich metadata only
+                this.log("Auto-enriching: " + title);
                 await this.enrichMetadata(item);
-
-                // If no PDF before enrich, re-check after - enrich may have attached one
-                if (!hasPdf) {
-                    let hasPdfNow = await this.itemHasPdfAttachment(item);
-                    if (hasPdfNow) {
-                        this.log("PDF attached by enrich for: " + title + " → skip recovery");
-                    } else {
-                        this.log("Still no PDF for: " + title + " → recovering");
-                        await this.recoverPdf(item);
-                    }
-                }
             } catch (e) {
                 this.log("processPendingItems error: " + e);
             }
@@ -1014,8 +1085,7 @@ PdfCompanion = {
         }
         if (!hasPdf) {
             this.log("Enrichissement: no PDF, trying to recover first...");
-            toast.update("Recherche PDF...");
-            let pdfResult = await this.recoverPdf(item, true); // silent mode
+            let pdfResult = await this.recoverPdf(item, false); // Show PDF recovery details
             if (pdfResult && pdfResult.status === "success") {
                 pdfSource = pdfResult.data?.source || pdfResult.source || "unknown";
                 changes.push("PDF attache (" + this.getSourceLabel(pdfSource) + ")");
@@ -1030,64 +1100,108 @@ PdfCompanion = {
             let url = this.config.apiUrl + "/enrich/item-stream/" + encodeURIComponent(item.key);
             let self = this;
 
+            this.log("[Enrich] Lancement: " + url);
+
             // Collect fields updated for summary
             let fieldsUpdated = [];
+            let eventCount = 0;
 
             let finalResult = await new Promise((resolve, reject) => {
                 let xhr = new XMLHttpRequest();
                 let lastIndex = 0;
                 let result = null;
+                let resolved = false;
 
                 xhr.open("GET", url, true);
                 xhr.setRequestHeader("Accept", "text/event-stream");
 
                 xhr.onprogress = () => {
-                    let newData = xhr.responseText.substring(lastIndex);
-                    lastIndex = xhr.responseText.length;
-                    let lines = newData.split("\n");
-                    for (let line of lines) {
-                        if (line.startsWith("data: ")) {
-                            try {
-                                let data = JSON.parse(line.substring(6));
-                                let msg = data.message || data.event || "";
-                                toast.update(msg);
+                    try {
+                        let newData = xhr.responseText.substring(lastIndex);
+                        lastIndex = xhr.responseText.length;
+                        let lines = newData.split("\n");
+                        for (let line of lines) {
+                            if (line.startsWith("data: ")) {
+                                try {
+                                    let data = JSON.parse(line.substring(6));
+                                    eventCount++;
+                                    this.log("[Enrich Event " + eventCount + "] " + JSON.stringify(data));
 
-                                // Track what was done
-                                if (data.field_updated || data.field) {
-                                    fieldsUpdated.push(data.field_updated || data.field);
-                                }
-                                if (data.fields_updated && Array.isArray(data.fields_updated)) {
-                                    fieldsUpdated = fieldsUpdated.concat(data.fields_updated);
-                                }
+                                    let msg = data.message || data.event || "";
+                                    toast.update(msg);
 
-                                if (data.event === "complete" || data.event === "error") {
-                                    // Merge final result fields
-                                    if (data.fields_updated) {
+                                    // Track what was done
+                                    if (data.field_updated || data.field) {
+                                        fieldsUpdated.push(data.field_updated || data.field);
+                                    }
+                                    if (data.fields_updated && Array.isArray(data.fields_updated)) {
                                         fieldsUpdated = fieldsUpdated.concat(data.fields_updated);
                                     }
-                                    if (data.data?.fields_updated) {
-                                        fieldsUpdated = fieldsUpdated.concat(data.data.fields_updated);
+
+                                    if (data.event === "complete" || data.event === "error" || data.event === "enrichment_complete") {
+                                        this.log("[Enrich] Event final: " + data.event + ", status: " + data.status);
+                                        // Merge final result fields
+                                        if (data.fields_updated) {
+                                            fieldsUpdated = fieldsUpdated.concat(data.fields_updated);
+                                        }
+                                        if (data.data?.fields_updated) {
+                                            fieldsUpdated = fieldsUpdated.concat(data.data.fields_updated);
+                                        }
+                                        result = data;
+                                        this.log("[Enrich] Result stored: " + JSON.stringify(result).substring(0, 200));
                                     }
-                                    result = data;
+                                } catch (parseErr) {
+                                    this.log("[Enrich Parse Error] " + parseErr + " (line: " + line.substring(0, 100) + ")");
                                 }
-                            } catch (e) {}
+                            }
                         }
+                    } catch (progressErr) {
+                        this.log("[Enrich Progress Error] " + progressErr);
                     }
                 };
 
-                xhr.onload = () => resolve(result);
-                xhr.onerror = () => reject(new Error("Connection failed"));
-                xhr.ontimeout = () => reject(new Error("Timeout"));
+                xhr.onload = () => {
+                    this.log("[Enrich] onload - eventCount: " + eventCount + ", result exists: " + (result !== null) + ", result status: " + (result?.status));
+                    if (!resolved) {
+                        resolved = true;
+                        if (result) {
+                            this.log("[Enrich] Resolving with result status: " + result.status);
+                        } else {
+                            this.log("[Enrich] WARNING: result is null on onload");
+                        }
+                        resolve(result);
+                    }
+                };
+
+                xhr.onerror = () => {
+                    this.log("[Enrich] onerror - status: " + xhr.status);
+                    if (!resolved) {
+                        resolved = true;
+                        reject(new Error("Connection failed (status: " + xhr.status + ")"));
+                    }
+                };
+
+                xhr.ontimeout = () => {
+                    this.log("[Enrich] ontimeout");
+                    if (!resolved) {
+                        resolved = true;
+                        reject(new Error("Timeout"));
+                    }
+                };
+
                 xhr.timeout = 120000;
+                this.log("[Enrich] Envoi requete...");
                 xhr.send();
             });
 
             toast.close();
 
+            this.log("[Enrich] Traitement du résultat final - status: " + (finalResult?.status) + ", fields: " + fieldsUpdated.length);
+
             // Remove duplicates from fieldsUpdated
             fieldsUpdated = [...new Set(fieldsUpdated)];
 
-            if (finalResult && finalResult.status === "success") {
+            if (finalResult && (finalResult.status === "success" || finalResult.status === "partial")) {
                 // Build unified summary message
                 // Add metadata changes
                 if (fieldsUpdated.length > 0) {
@@ -1101,13 +1215,17 @@ PdfCompanion = {
                     summaryMsg = "Aucune modification";
                 }
 
+                this.log("[Enrich] Success: " + summaryMsg);
                 this.showNotification("Enrichissement termine!", summaryMsg);
                 await item.reload();
             } else {
-                this.showNotification("Echec enrichissement", finalResult?.message || finalResult?.error || "Erreur inconnue");
+                let errMsg = finalResult?.message || finalResult?.error || "Erreur inconnue";
+                this.log("[Enrich] Echec: " + errMsg + " (result: " + JSON.stringify(finalResult) + ")");
+                this.showNotification("Echec enrichissement", errMsg);
             }
         } catch (e) {
             toast.close();
+            this.log("[Enrich] Exception: " + e.message + " (stack: " + e.stack + ")");
             this.showNotification("Erreur", e.message || "Connexion echouee");
         }
     },
@@ -2232,10 +2350,9 @@ PdfCompanion = {
         let key = item.key;
         let title = item.getField("title") || "Unknown";
 
-        // Copy to clipboard
-        let clipboardHelper = Components.classes["@mozilla.org/widget/clipboardhelper;1"]
-            .getService(Components.interfaces.nsIClipboardHelper);
-        clipboardHelper.copyString(key);
+        // Copy to clipboard using Zotero 8 API
+        const { Clipboard } = require("zotero/lib/clipboard");
+        Clipboard.copyText(key);
 
         // Show notification with ID
         let msg = "ID: " + key + "\n\nCopied to clipboard!";
@@ -3769,62 +3886,13 @@ PdfCompanion = {
         toast.update("Demarrage extraction...");
 
         try {
-            let baseUrl = this.config.paperReaderUrl + "/extract-figures/" + encodeURIComponent(item.key);
-            this.log("POST extract-figures: " + baseUrl);
-
-            // 1. Start extraction (returns immediately)
-            let startResponse = await Zotero.HTTP.request("POST", baseUrl, {
-                timeout: 30000,
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({})
-            });
-
-            let startResult = JSON.parse(startResponse.responseText);
-            this.log("Extract started: " + startResult.status);
-
-            if (startResult.status === "error") {
-                toast.error(startResult.message || "Erreur demarrage");
-                return;
-            }
-
-            // 2. Poll for status
-            toast.update("Extraction en cours...");
-            let statusUrl = baseUrl + "/status";
-            let maxAttempts = 120; // 4 minutes max (120 * 2s)
-            let attempt = 0;
-            let result = null;
-
-            while (attempt < maxAttempts) {
-                await new Promise(r => setTimeout(r, 2000)); // Wait 2s
-                attempt++;
-
-                try {
-                    let statusResponse = await Zotero.HTTP.request("GET", statusUrl, { timeout: 10000 });
-                    let status = JSON.parse(statusResponse.responseText);
-
-                    if (status.status === "completed") {
-                        result = status.result;
-                        break;
-                    } else if (status.status === "error" || status.status === "failed") {
-                        toast.error(status.message || "Extraction echouee");
-                        return;
-                    } else {
-                        // Still processing
-                        let msg = status.message || "Extraction en cours...";
-                        toast.update(msg + " (" + attempt + ")");
-                    }
-                } catch (pollErr) {
-                    this.log("Poll error: " + pollErr);
-                    // Continue polling on network errors
-                }
-            }
-
+            let result = await this.extractFiguresSSE(item, toast);
             if (!result) {
                 toast.error("Timeout - extraction trop longue");
                 return;
             }
 
-            // 3. Handle result
+            // Handle result
             if (result.status === "success" || result.status === "partial") {
                 let count = result.figures_extracted || 0;
                 let summary = count + " figure(s) extraite(s)";
@@ -3843,6 +3911,145 @@ PdfCompanion = {
             toast.error("Erreur: " + (e.message || "Connexion echouee"));
             this.log("extractFigures error: " + e);
         }
+    },
+
+    // Extract figures using SSE (Server-Sent Events) via XMLHttpRequest
+    async extractFiguresSSE(item, toast) {
+        let baseUrl = this.config.paperReaderUrl + "/extract-figures/" + encodeURIComponent(item.key) + "/stream";
+        this.log("Starting SSE extraction: " + baseUrl);
+
+        // Map of stage keys to emoji
+        const stageEmoji = {
+            "pdf_fetch": "📥",
+            "extraction": "⚙️",
+            "download": "🖼️",
+            "upload_dropbox": "☁️",
+            "tagging": "🏷️",
+            "complete": "✅",
+            "error": "❌"
+        };
+
+        return new Promise((resolve, reject) => {
+            try {
+                let xhr = new XMLHttpRequest();
+                let lastProcessedIndex = 0;
+                let resolved = false;
+                let timeout = setTimeout(() => {
+                    xhr.abort();
+                    if (!resolved) {
+                        resolved = true;
+                        reject(new Error("SSE timeout"));
+                    }
+                }, 240000); // 4 minute timeout
+
+                xhr.onprogress = () => {
+                    try {
+                        // Get all text received so far
+                        let text = xhr.responseText;
+
+                        // Log first chunk
+                        if (lastProcessedIndex === 0 && text.length > 0) {
+                            let preview = text.substring(0, 200).replace(/\n/g, ' ');
+                            this.log("SSE first data: " + preview);
+                        }
+
+                        // Split by newlines and process new lines
+                        let lines = text.split('\n');
+
+                        // Process only new lines
+                        for (let i = lastProcessedIndex; i < lines.length; i++) {
+                            let line = lines[i].trim();
+
+                            if (line.startsWith('data: ')) {
+                                let jsonStr = line.substring(6); // Remove 'data: ' prefix
+                                try {
+                                    let data = JSON.parse(jsonStr);
+                                    this.log("SSE event: " + JSON.stringify(data));
+
+                                    // Update toast based on stage
+                                    if (data.stage && toast) {
+                                        let emoji = stageEmoji[data.stage] || "•";
+                                        let msg = emoji + " " + (data.status || data.stage);
+                                        if (data.progress !== undefined) {
+                                            msg += " (" + Math.round(data.progress) + "%)";
+                                        }
+                                        toast.update(msg);
+                                    }
+
+                                    // Check if complete
+                                    if (data.stage === "complete") {
+                                        clearTimeout(timeout);
+                                        if (!resolved) {
+                                            resolved = true;
+                                            resolve(data);
+                                        }
+                                        xhr.abort();
+                                        return;
+                                    }
+                                } catch (parseErr) {
+                                    this.log("SSE parse error: " + parseErr + " (line: " + line + ")");
+                                }
+                            }
+                        }
+                        lastProcessedIndex = lines.length;
+                    } catch (e) {
+                        this.log("SSE onprogress error: " + e);
+                    }
+                };
+
+                xhr.onload = () => {
+                    clearTimeout(timeout);
+                    this.log("SSE onload - status: " + xhr.status + ", length: " + xhr.responseText.length);
+
+                    // If we got here without a "complete" event, parse final response
+                    if (xhr.responseText && xhr.responseText.length > 0) {
+                        let lines = xhr.responseText.split('\n');
+                        for (let i = 0; i < lines.length; i++) {
+                            let line = lines[i].trim();
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    let data = JSON.parse(line.substring(6));
+                                    if (data.stage === "complete") {
+                                        this.log("SSE final result: " + JSON.stringify(data));
+                                        resolve(data);
+                                        return;
+                                    }
+                                } catch (e) {}
+                            }
+                        }
+                    }
+                    this.log("SSE connection closed without complete event");
+                };
+
+                xhr.onerror = () => {
+                    clearTimeout(timeout);
+                    if (!resolved) {
+                        resolved = true;
+                        this.log("SSE connection error");
+                        reject(new Error("SSE connection error"));
+                    }
+                };
+
+                xhr.onabort = () => {
+                    clearTimeout(timeout);
+                    if (!resolved) {
+                        resolved = true;
+                        this.log("SSE connection aborted");
+                        reject(new Error("SSE aborted"));
+                    }
+                };
+
+                this.log("Opening SSE connection...");
+                xhr.open('POST', baseUrl, true);
+                xhr.setRequestHeader('Accept', 'text/event-stream');
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.send(JSON.stringify({}));
+
+            } catch (e) {
+                this.log("SSE setup error: " + e);
+                reject(e);
+            }
+        });
     },
 
     async extractFiguresCollection() {
@@ -3964,46 +4171,14 @@ PdfCompanion = {
         }
     },
 
-    // Helper: extract figures for single item with polling (returns result)
+    // Helper: extract figures for single item using SSE (returns result)
     async extractFiguresForItem(item) {
-        let baseUrl = this.config.paperReaderUrl + "/extract-figures/" + encodeURIComponent(item.key);
-
-        // Start extraction
-        let startResponse = await Zotero.HTTP.request("POST", baseUrl, {
-            timeout: 30000,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({})
-        });
-
-        let startResult = JSON.parse(startResponse.responseText);
-        if (startResult.status === "error") {
-            return { status: "error", message: startResult.message };
+        try {
+            return await this.extractFiguresSSE(item);
+        } catch (e) {
+            this.log("extractFiguresForItem error: " + e);
+            return { status: "error", message: e.message || "Extraction failed" };
         }
-
-        // Poll for status
-        let statusUrl = baseUrl + "/status";
-        let maxAttempts = 90; // 3 minutes max
-        let attempt = 0;
-
-        while (attempt < maxAttempts) {
-            await new Promise(r => setTimeout(r, 2000));
-            attempt++;
-
-            try {
-                let statusResponse = await Zotero.HTTP.request("GET", statusUrl, { timeout: 10000 });
-                let status = JSON.parse(statusResponse.responseText);
-
-                if (status.status === "completed") {
-                    return status.result;
-                } else if (status.status === "error" || status.status === "failed") {
-                    return { status: "error", message: status.message };
-                }
-            } catch (pollErr) {
-                // Continue on network errors
-            }
-        }
-
-        return { status: "error", message: "Timeout" };
     },
 
     async showFigures() {
@@ -4732,20 +4907,18 @@ PdfCompanion = {
                                     toast.update("Collection: " + data.collection_name);
                                 }
                                 break;
-                            case "phase":
-                                if (data.phase === "pdf_check") {
-                                    toast.update("Verification: " + data.total_articles + " articles");
-                                } else if (data.phase === "fiche_generation") {
-                                    toast.update("Generation fiches...");
-                                } else if (data.phase === "synthesis") {
-                                    toast.update("Synthese LLM...");
-                                } else if (data.phase === "fiche_generation_complete") {
-                                    toast.update("Fiches: " + data.fiches_count + " pretes");
-                                }
+                            case "pdf_check":
+                                toast.update("Verification: " + data.total_articles + " articles");
                                 break;
                             case "article_check":
                             case "article_valid":
                                 toast.update("PDF " + data.index + "/" + data.total);
+                                break;
+                            case "pdf_check_complete":
+                                toast.update("PDFs verifies: " + data.valid + " / " + (data.valid + data.skipped));
+                                break;
+                            case "fiche_generation":
+                                toast.update("Generation fiches: " + data.total + " articles");
                                 break;
                             case "lecture_check":
                             case "lecture_found":
@@ -4757,6 +4930,12 @@ PdfCompanion = {
                                 break;
                             case "lecture_done":
                                 toast.update("Fiche generee");
+                                break;
+                            case "fiche_generation_complete":
+                                toast.update("Fiches pretes: " + data.fiches_count);
+                                break;
+                            case "synthesis":
+                                toast.update("Synthese LLM...");
                                 break;
                             case "synthesis_start":
                                 toast.update("Synthese: " + (data.fiches_count || "?") + " fiches");
@@ -4822,6 +5001,267 @@ PdfCompanion = {
             toast.success("Synthese terminee");
             this.log("Synthesis finished (no result data)");
         }
+    },
+
+    // === DIALOG PARAMETRES SYNTHESE ===
+    async showSynthesisParamsDialog() {
+        return new Promise((resolve) => {
+            let win = Services.ww.openWindow(
+                null, "about:blank", "_blank",
+                "chrome,centerscreen,resizable=yes,width=400,height=300",
+                null
+            );
+
+            win.addEventListener("load", () => {
+                win.document.open();
+                win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Paramètres Synthèse</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f0f0f0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 350px;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h2 {
+            margin: 0 0 20px 0;
+            font-size: 1.1em;
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            color: #333;
+            font-size: 0.95em;
+        }
+        input[type="checkbox"] {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.95em;
+            margin-top: 5px;
+        }
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 500;
+        }
+        .btn-ok {
+            background: #28a745;
+            color: white;
+        }
+        .btn-cancel {
+            background: #ccc;
+            color: #333;
+        }
+        .btn-ok:hover { background: #218838; }
+        .btn-cancel:hover { background: #bbb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Paramètres Synthèse</h2>
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="lecture" checked>
+                Analyser les articles
+            </label>
+        </div>
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="replace" checked>
+                Remplacer les synthèses existantes
+            </label>
+        </div>
+        <div class="form-group">
+            <label for="mode">Mode de lecture</label>
+            <select id="mode">
+                <option value="standard" selected>Standard (5-8 keypoints, revue rapide)</option>
+                <option value="full">Full (6-10 keypoints, revue détaillée)</option>
+                <option value="thesis">Thesis (10-15 keypoints, travail académique)</option>
+                <option value="section">Section (auto, par sections du document)</option>
+            </select>
+        </div>
+        <div class="buttons">
+            <button class="btn-ok" id="btn-ok">OK</button>
+            <button class="btn-cancel" id="btn-cancel">Annuler</button>
+        </div>
+    </div>
+
+    <script>
+        let result = null;
+
+        document.getElementById("btn-ok").onclick = () => {
+            result = {
+                lecture: document.getElementById("lecture").checked,
+                replace: document.getElementById("replace").checked,
+                lecture_mode: document.getElementById("mode").value
+            };
+            window.close();
+        };
+
+        document.getElementById("btn-cancel").onclick = () => {
+            window.close();
+        };
+
+        // Passer le résultat au parent
+        window.onunload = () => {
+            if (window.opener && window.opener.pendingSynthesisParams) {
+                window.opener.pendingSynthesisParams = result;
+            }
+        };
+    </script>
+</body>
+</html>`);
+                win.document.close();
+            });
+
+            // Vérifier périodiquement si le dialogue est fermé
+            let checkInterval = setInterval(() => {
+                if (win.closed) {
+                    clearInterval(checkInterval);
+                    resolve(this.pendingSynthesisParams);
+                    this.pendingSynthesisParams = null;
+                }
+            }, 100);
+        });
+    },
+
+    // === SYNTHESIZE COLLECTION V2 (nouvel endpoint) ===
+    async synthesizeCollectionV2() {
+        let collection = this.getSelectedCollection();
+        if (!collection) {
+            this.showNotification("PDF Companion", "Sélectionnez une collection");
+            return;
+        }
+
+        // Ouvrir fenêtre de choix des paramètres
+        let params = await this.showSynthesisParamsDialog();
+        if (!params) {
+            return; // Annulé
+        }
+
+        let self = this;
+        let url = this.config.paperReaderUrl + "/synthesize/collection/" +
+                  encodeURIComponent(collection.key) + "/stream-v2?" +
+                  "lecture=" + params.lecture +
+                  "&replace=" + params.replace +
+                  "&lecture_mode=" + encodeURIComponent(params.lecture_mode);
+
+        this.log("Synthèse v2: " + url);
+        let toast = this.Toast.progress("Synthèse - " + collection.name.substring(0, 30));
+
+        await new Promise((resolve, reject) => {
+            let xhr = new XMLHttpRequest();
+            let lastIndex = 0;
+
+            xhr.open("GET", url, true);
+            xhr.setRequestHeader("Accept", "text/event-stream");
+
+            xhr.onprogress = function() {
+                let newData = xhr.responseText.substring(lastIndex);
+                lastIndex = xhr.responseText.length;
+                let lines = newData.split("\n");
+
+                for (let line of lines) {
+                    if (!line.startsWith("data: ")) continue;
+                    try {
+                        let data = JSON.parse(line.substring(6));
+                        let phase = data.phase || "unknown";
+
+                        switch (phase) {
+                            case "init":
+                                toast.update("Initialisation...");
+                                break;
+                            case "pdf_check":
+                                toast.update("Vérification PDFs: " + data.total_articles + " articles");
+                                break;
+                            case "article_check":
+                            case "article_valid":
+                                toast.update("PDF " + data.index + "/" + data.total);
+                                break;
+                            case "pdf_check_complete":
+                                toast.update("PDFs: " + data.valid + " valides, " + data.skipped + " skippés");
+                                break;
+                            case "fiche_check":
+                                toast.update("Vérification fiches...");
+                                break;
+                            case "fiche_generation":
+                                toast.update("Analyse articles: " + data.total + " articles");
+                                break;
+                            case "lecture_start":
+                                toast.update("Analyse: " + (data.title || data.zotero_key || ""));
+                                break;
+                            case "lecture_progress":
+                                toast.update("Analyse: " + data.step + "...");
+                                break;
+                            case "fiche_generation_complete":
+                                toast.update("Fiches prêtes: " + data.fiches_count);
+                                break;
+                            case "synthesis":
+                                toast.update("Synthèse LLM...");
+                                break;
+                            case "storage":
+                                toast.update("Stockage...");
+                                break;
+                            case "complete":
+                                toast.success("Synthèse complétée!");
+                                self.log("Synthèse v2 complètée: " + JSON.stringify(data).substring(0, 200));
+                                break;
+                            case "error":
+                                toast.error("Erreur: " + (data.error || data.message || "Erreur inconnue"));
+                                self.log("Synthèse v2 erreur: " + data.error);
+                                break;
+                        }
+                    } catch (e) {
+                        // Ignore parse errors
+                    }
+                }
+            };
+
+            xhr.onload = function() {
+                self.log("Synthèse v2 complètée: status " + xhr.status);
+                resolve();
+            };
+
+            xhr.onerror = function() {
+                self.log("Synthèse v2 erreur connexion");
+                toast.error("Erreur de connexion");
+                reject(new Error("Connexion échouée"));
+            };
+
+            xhr.send();
+        });
     },
 
     // === SYNTHESIZE COLLECTION (Markdown - ancien) ===
@@ -5429,44 +5869,21 @@ PdfCompanion = {
 
                 articleList.innerHTML = '<div style="padding: 20px; text-align: center; color: #17a2b8;">Chargement des articles...</div>';
                 sseLog.innerHTML = '';
-                addSseEvent('start', 'Demarrage lecture batch - Collection: ' + collection.name);
+                addSseEvent('start', 'Demarrage synthese - Collection: ' + collection.name);
                 if (includeSubcollections) {
                     addSseEvent('start', 'Mode: avec sous-collections');
                 }
 
-                let url = self.config.paperReaderUrl + "/lecture/collection/" + encodeURIComponent(collection.key);
-                self.log("Starting batch reading: " + url);
+                let url = self.config.paperReaderUrl + "/synthesize/collection/" + encodeURIComponent(collection.key) + "/stream";
+                self.log("Starting collection synthesis: " + url);
 
                 try {
-                    // Start the batch
-                    let response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            provider: 'claude_cli',
-                            include_subcollections: includeSubcollections
-                        })
-                    });
+                    statusBadge.textContent = 'En cours';
+                    statusBadge.className = 'status-badge running';
+                    addSseEvent('progress', 'Connexion au stream SSE de synthese...');
 
-                    let result = await response.json();
-
-                    if (result.status === 'started' || result.status === 'queued' || result.queued > 0 || result.batch_id) {
-                        addSseEvent('progress', 'Batch demarre: ' + (result.queued || result.total || 0) + ' articles');
-                        statusBadge.textContent = 'En cours';
-                        statusBadge.className = 'status-badge running';
-
-                        // Connect to SSE stream
-                        connectSSE(result.batch_id);
-                    } else if (result.error) {
-                        addSseEvent('error', 'Erreur: ' + result.error);
-                        statusBadge.textContent = 'Erreur';
-                        statusBadge.className = 'status-badge error';
-                        btnStart.disabled = false;
-                        btnCancel.disabled = true;
-                    } else {
-                        addSseEvent('progress', 'Reponse: ' + JSON.stringify(result).substring(0, 100));
-                        connectSSE();
-                    }
+                    // Connect directly to synthesis stream
+                    connectSSE(null);
                 } catch (e) {
                     addSseEvent('error', 'Erreur de connexion: ' + e.message);
                     statusBadge.textContent = 'Erreur';
@@ -5482,10 +5899,8 @@ PdfCompanion = {
                     currentXhr.abort();
                 }
 
-                let sseUrl = self.config.paperReaderUrl + "/lecture/stream?show_history=true";
-                if (batchId) {
-                    sseUrl += "&batch_id=" + encodeURIComponent(batchId);
-                }
+                // Use the synthesis collection stream endpoint
+                let sseUrl = self.config.paperReaderUrl + "/synthesize/collection/" + encodeURIComponent(collection.key) + "/stream";
 
                 self.log("Connecting to SSE: " + sseUrl);
                 addSseEvent('progress', 'Connexion au stream SSE...');
@@ -5534,72 +5949,60 @@ PdfCompanion = {
 
             // Handle SSE events
             function handleSSEEvent(data) {
-                let evType = data.event || data.type || 'info';
+                // Support both 'event' and 'phase' fields
+                let evType = data.phase || data.event || data.type || 'info';
 
                 switch (evType) {
                     case 'init':
-                    case 'batch_init':
-                        if (data.articles) {
-                            renderArticlesFromStatus(data.articles);
-                        }
-                        addSseEvent('start', 'Batch initialise: ' + (data.total || data.count || '?') + ' articles');
+                        addSseEvent('start', data.message || 'Synthese initialisee');
                         break;
 
-                    case 'article_start':
-                    case 'article_extraction':
-                        statusBadge.textContent = 'Traitement...';
-                        if (data.zotero_key) {
-                            updateArticleStatus(data.zotero_key, 'processing', data.message || 'En cours...');
-                        }
-                        addSseEvent('progress', (data.title || data.zotero_key || '') + ': ' + (data.message || 'Demarrage'));
+                    case 'collection_info':
+                        let artCount = data.articles_count || '?';
+                        addSseEvent('progress', 'Collection: ' + data.collection_name + ' (' + artCount + ' articles)');
+                        stats.pending = artCount;
+                        updateStats();
                         break;
 
-                    case 'article_progress':
-                    case 'article_llm':
-                        if (data.zotero_key) {
-                            updateArticleStatus(data.zotero_key, 'processing', data.message || 'Analyse LLM...');
+                    case 'heartbeat':
+                        if (data.elapsed_seconds) {
+                            addSseEvent('progress', 'Synthese en cours... (' + data.elapsed_seconds + 's)');
                         }
-                        addSseEvent('progress', (data.title || data.zotero_key || '') + ': ' + (data.message || 'Progression'));
                         break;
 
-                    case 'article_complete':
-                    case 'article_success':
-                        if (data.zotero_key) {
-                            updateArticleStatus(data.zotero_key, 'success', 'Termine');
-                            stats.success++;
-                            stats.pending--;
-                            updateStats();
+                    case 'dropbox_uploaded':
+                        addSseEvent('success', 'Fichiers disponibles sur Dropbox');
+                        if (data.markdown_url) {
+                            addSseEvent('progress', '📄 Markdown: ' + data.markdown_url);
                         }
-                        addSseEvent('success', 'Termine: ' + (data.title || data.zotero_key || ''));
+                        if (data.docx_url) {
+                            addSseEvent('progress', '📋 DOCX: ' + data.docx_url);
+                        }
                         break;
 
-                    case 'article_error':
-                    case 'article_failed':
-                        if (data.zotero_key) {
-                            updateArticleStatus(data.zotero_key, 'error', data.error || data.message || 'Echec');
-                            stats.error++;
-                            stats.pending--;
-                            updateStats();
-                        }
-                        addSseEvent('error', 'Echec: ' + (data.title || data.zotero_key || '') + ' - ' + (data.error || data.message || ''));
+                    case 'zotero_attached':
+                        addSseEvent('success', 'Item cree dans Zotero: ' + (data.title || data.item_key || ''));
+                        stats.success++;
+                        stats.pending--;
+                        updateStats();
                         break;
 
-                    case 'batch_complete':
                     case 'complete':
                         statusBadge.textContent = 'Termine';
                         statusBadge.className = 'status-badge';
                         statusBadge.style.background = '#28a745';
                         btnStart.disabled = false;
                         btnCancel.disabled = true;
-                        addSseEvent('complete', 'Batch termine! ' + stats.success + ' succes, ' + stats.error + ' echecs');
+                        let durMsg = data.duration_seconds ? ' (' + data.duration_seconds + 's)' : '';
+                        addSseEvent('complete', 'Synthese completee!' + durMsg);
                         break;
 
                     case 'error':
+                        statusBadge.textContent = 'Erreur';
+                        statusBadge.className = 'status-badge error';
+                        btnStart.disabled = false;
+                        btnCancel.disabled = true;
                         addSseEvent('error', data.message || data.error || 'Erreur');
-                        break;
-
-                    case 'heartbeat':
-                        // Ignore heartbeats
                         break;
 
                     default:

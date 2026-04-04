@@ -5645,6 +5645,24 @@ PdfCompanion = {
         .text-input::placeholder {
             color: #666;
         }
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #444;
+            border-radius: 6px;
+            background: #2a2a2a;
+            color: #e0e0e0;
+            font-size: 0.95em;
+            cursor: pointer;
+        }
+        select:focus {
+            outline: none;
+            border-color: #4a7c43;
+        }
+        select option {
+            background: #1e1e1e;
+            color: #e0e0e0;
+        }
         .hidden {
             display: none;
         }
@@ -5691,44 +5709,19 @@ PdfCompanion = {
     </div>
     <div class="form-container">
         <div class="form-group">
-            <label>Type de synthese</label>
-            <div class="radio-group">
-                <div class="radio-item">
-                    <input type="radio" name="synthesisType" id="typeStandard" value="standard" checked>
-                    <label for="typeStandard">Standard - Synthese bibliographique</label>
-                </div>
-                <div class="radio-item">
-                    <input type="radio" name="synthesisType" id="typePrisma" value="prisma">
-                    <label for="typePrisma">PRISMA - Revue systematique</label>
-                </div>
-            </div>
+            <label>Mode de lecture</label>
+            <select id="lectureMode">
+                <option value="standard" selected>Standard - 4-6 keypoints, veille bibliographique rapide</option>
+                <option value="full">Full - 6-10 keypoints, revue systématique détaillée</option>
+                <option value="section">Section - 4-8 keypoints, analyse par sections GROBID</option>
+                <option value="thesis">Thesis - 10-15 keypoints, qualité doctorale pour publication</option>
+                <option value="prisma">PRISMA - Format PRISMA pour méta-analyses systématiques</option>
+            </select>
         </div>
 
         <div class="form-group">
-            <label>Mode de lecture</label>
-            <div class="radio-group">
-                <div class="radio-item">
-                    <input type="radio" name="lectureMode" id="modeStandard" value="standard" checked>
-                    <label for="modeStandard">Standard - Analyse rapide</label>
-                </div>
-                <div class="radio-item">
-                    <input type="radio" name="lectureMode" id="modeFull" value="full">
-                    <label for="modeFull">Complete - Analyse approfondie</label>
-                </div>
-                <div class="radio-item">
-                    <input type="radio" name="lectureMode" id="modeThesis" value="thesis">
-                    <label for="modeThesis">These - Qualite doctorale</label>
-                </div>
-                <div class="radio-item">
-                    <input type="radio" name="lectureMode" id="modeFocus" value="focus">
-                    <label for="modeFocus">Focus - Sujet specifique</label>
-                </div>
-            </div>
-        </div>
-
-        <div class="form-group hidden" id="focusGroup">
-            <label>Sujet de focus</label>
-            <textarea class="text-input" id="focusText" placeholder="Ex: biomarqueurs, mecanismes, resistance..."></textarea>
+            <label>Focus d'analyse (optionnel)</label>
+            <textarea class="text-input" id="focusText" placeholder="Ex: mécanismes d'action, effets secondaires, biomarqueurs..."></textarea>
         </div>
 
         <div class="form-group">
@@ -5780,38 +5773,16 @@ PdfCompanion = {
             return null;
         }
 
-        function toggleFocusGroup() {
-            var mode = getSelectedRadio('lectureMode');
-            var focusGroup = document.getElementById('focusGroup');
-            if (mode === 'focus') {
-                focusGroup.classList.remove('hidden');
-                setTimeout(function() {
-                    document.getElementById('focusText').focus();
-                }, 50);
-            } else {
-                focusGroup.classList.add('hidden');
-            }
-        }
-
         function startSynthesis() {
-            var synthesisType = getSelectedRadio('synthesisType') || 'standard';
-            var lectureMode = getSelectedRadio('lectureMode') || 'standard';
+            var lectureMode = document.getElementById('lectureMode').value || 'standard';
             var llmProvider = getSelectedRadio('llmProvider') || 'claude_cli';
             var analyzeNoFiche = document.getElementById('analyzeNoFiche').checked;
             var replaceExisting = document.getElementById('replaceExisting').checked;
-            var focus = null;
-
-            if (lectureMode === 'focus') {
-                focus = document.getElementById('focusText').value.trim();
-                if (!focus) {
-                    alert('Veuillez entrer un sujet de focus');
-                    document.getElementById('focusText').focus();
-                    return;
-                }
-            }
+            var focus = document.getElementById('focusText').value.trim() || null;
 
             if (window.pdfCompanionCallback) {
-                window.pdfCompanionCallback(synthesisType, lectureMode, llmProvider, analyzeNoFiche, replaceExisting, focus);
+                // Pass null as synthesisType (first param) since it's now part of lectureMode
+                window.pdfCompanionCallback(null, lectureMode, llmProvider, analyzeNoFiche, replaceExisting, focus);
             }
             window.close();
         }
@@ -5823,12 +5794,6 @@ PdfCompanion = {
                 window.close();
             }
         });
-
-        // Setup radio listeners for focus group visibility
-        var radios = document.getElementsByName('lectureMode');
-        for (var i = 0; i < radios.length; i++) {
-            radios[i].addEventListener('change', toggleFocusGroup);
-        }
     </script>
 </body>
 </html>`;
@@ -5849,8 +5814,8 @@ PdfCompanion = {
                 win.document.title = "Synthese de Collection";
 
                 win.pdfCompanionCallback = async (synthesisType, lectureMode, llmProvider, analyzeNoFiche, replaceExisting, focus) => {
-                    self.log("Unified synthesis dialog: type=" + synthesisType + ", mode=" + lectureMode + ", focus=" + (focus || "null"));
-                    await self.runUnifiedSynthesis(collection, synthesisType, lectureMode, llmProvider, analyzeNoFiche, replaceExisting, focus);
+                    self.log("Unified synthesis dialog: mode=" + lectureMode + ", lecture=" + analyzeNoFiche + ", replace=" + replaceExisting + (focus ? ", focus=" + focus : ""));
+                    await self.runUnifiedSynthesis(collection, null, lectureMode, llmProvider, analyzeNoFiche, replaceExisting, focus);
                 };
             }, { once: true });
 
@@ -5865,12 +5830,10 @@ PdfCompanion = {
         let self = this;
         let collectionName = collection.name;
 
-        // Build final lecture_mode - if synthesisType is "prisma", use that, otherwise use lectureMode
-        let finalLectureMode = synthesisType === "prisma" ? "prisma" : lectureMode;
-
+        // lectureMode now contains the full mode (standard, full, section, thesis, prisma)
         let url = this.config.paperReaderUrl + "/synthesize/collection/" +
                   encodeURIComponent(collection.key) + "/stream-v2?" +
-                  "lecture_mode=" + encodeURIComponent(finalLectureMode) +
+                  "lecture_mode=" + encodeURIComponent(lectureMode) +
                   "&lecture=" + (analyzeNoFiche ? "true" : "false") +
                   "&provider=" + encodeURIComponent(llmProvider) +
                   "&replace=" + (replaceExisting ? "true" : "false");
@@ -5882,7 +5845,11 @@ PdfCompanion = {
         }
 
         this.log("Unified synthesis: " + url + (requestBody ? " with body: " + requestBody : ""));
-        let toast = this.Toast.progress("Synthese " + (synthesisType === "prisma" ? "PRISMA" : "Standard") + " - " + collectionName.substring(0, 30));
+        let modeLabel = lectureMode === "prisma" ? "PRISMA" :
+                        lectureMode === "thesis" ? "Thesis" :
+                        lectureMode === "full" ? "Full" :
+                        lectureMode === "section" ? "Section" : "Standard";
+        let toast = this.Toast.progress("Synthese " + modeLabel + " - " + collectionName.substring(0, 30));
 
         await new Promise((resolve, reject) => {
             let xhr = new XMLHttpRequest();

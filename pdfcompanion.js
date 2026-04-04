@@ -5058,63 +5058,75 @@ PdfCompanion = {
                         self.log("Synthesis SSE: " + evType);
 
                         switch (evType) {
-                            case "init":
-                                if (data.collection_name) {
-                                    toast.update("Collection: " + data.collection_name);
-                                }
+                            case "workflow_start":
+                                toast.update("Démarrage du workflow...");
                                 break;
-                            case "pdf_check":
-                                toast.update("Verification: " + data.total_articles + " articles");
+                            case "pdf_check_start":
+                                toast.update("Vérification des PDFs...");
                                 break;
-                            case "article_check":
-                            case "article_valid":
-                                toast.update("PDF " + data.index + "/" + data.total);
+                            case "pdf_check_progress":
+                                toast.update("PDF " + (data.current || data.index || 0) + "/" + (data.total || "?"));
                                 break;
                             case "pdf_check_complete":
-                                toast.update("PDFs verifies: " + data.valid + " / " + (data.valid + data.skipped));
+                                toast.update("PDFs: " + (data.valid || 0) + " valides, " + (data.skipped || 0) + " skippés");
                                 break;
-                            case "fiche_generation":
-                                toast.update("Generation fiches: " + data.total + " articles");
+                            case "fiche_check_start":
+                                toast.update("Vérification des fiches...");
                                 break;
-                            case "lecture_check":
-                            case "lecture_found":
-                                toast.update("Fiche " + data.index + "/" + data.total);
+                            case "fiche_check_progress":
+                                toast.update("Fiches: " + (data.current || 0) + "/" + (data.total || "?"));
                                 break;
-                            case "lecture_start":
-                            case "lecture_progress":
-                                toast.update("Generation fiche...");
+                            case "fiche_check_complete":
+                                toast.update("Fiches: " + (data.available || 0) + " disponibles, " + (data.missing || 0) + " manquantes");
                                 break;
-                            case "lecture_done":
-                                toast.update("Fiche generee");
+                            case "analysis_start":
+                                toast.update("Début de l'analyse des articles...");
                                 break;
-                            case "fiche_generation_complete":
-                                toast.update("Fiches pretes: " + data.fiches_count);
+                            case "analysis_article_start":
+                                toast.update("Analyse: " + (data.title || data.key || "article"));
                                 break;
-                            case "synthesis":
-                                toast.update("Synthese LLM...");
+                            case "analysis_article_complete":
+                                toast.update("Analysé (" + (data.current || 0) + "/" + (data.total || 0) + ")");
+                                break;
+                            case "analysis_complete":
+                                toast.update("Analyses terminées!");
                                 break;
                             case "synthesis_start":
-                                toast.update("Synthese: " + (data.fiches_count || "?") + " fiches");
+                                toast.update("Synthèse: chargement des fiches...");
                                 break;
-                            case "synthesis_progress":
-                                toast.update("Synthese LLM...");
+                            case "synthesis_loading_fiches":
+                                toast.update("Synthèse: chargement des fiches...");
                                 break;
-                            case "synthesis_done":
-                                toast.update("Synthese terminee");
+                            case "synthesis_generating":
+                                toast.update("Synthèse: génération en cours...");
                                 break;
-                            case "dropbox_upload":
+                            case "synthesis_complete":
+                                toast.update("Synthèse générée!");
+                                break;
+                            case "storage_start":
+                                toast.update("Stockage...");
+                                break;
+                            case "storage_dropbox_upload":
                                 toast.update("Upload Dropbox...");
                                 break;
-                            case "zotero_attachment":
-                                toast.update("Attachment Zotero...");
+                            case "storage_zotero_attach":
+                                toast.update("Attachement Zotero...");
                                 break;
-                            case "complete":
+                            case "storage_complete":
+                                toast.update("Stockage terminé!");
+                                break;
+                            case "workflow_complete":
                                 finalResult = data;
                                 break;
-                            case "error":
+                            case "workflow_error":
                                 toast.error(data.message || data.error || "Erreur");
                                 reject(new Error(data.error || data.message));
                                 return;
+                            default:
+                                if (data.message) {
+                                    toast.update(data.message);
+                                }
+                                break;
                         }
                     } catch (e) {
                         // Ignore parse errors
@@ -5438,50 +5450,79 @@ PdfCompanion = {
                     if (!line.startsWith("data: ")) continue;
                     try {
                         let data = JSON.parse(line.substring(6));
-                        let phase = data.phase || "unknown";
+                        let event = data.event || data.phase || "unknown";
+                        let message = data.message || "";
 
-                        switch (phase) {
-                            case "init":
-                                toast.update("Initialisation...");
+                        switch (event) {
+                            case "workflow_start":
+                                toast.update("Démarrage workflow...");
                                 break;
-                            case "pdf_check":
-                                toast.update("Vérification PDFs: " + data.total_articles + " articles");
+                            case "pdf_check_start":
+                                toast.update("Vérification des PDFs...");
                                 break;
-                            case "article_check":
-                            case "article_valid":
-                                toast.update("PDF " + data.index + "/" + data.total);
+                            case "pdf_check_progress":
+                                toast.update("PDF " + (data.current || data.index || 0) + "/" + (data.total || "?"));
                                 break;
                             case "pdf_check_complete":
-                                toast.update("PDFs: " + data.valid + " valides, " + data.skipped + " skippés");
+                                toast.update("PDFs: " + (data.valid || 0) + " valides, " + (data.skipped || 0) + " skippés");
                                 break;
-                            case "fiche_check":
-                                toast.update("Vérification fiches...");
+                            case "fiche_check_start":
+                                toast.update("Vérification des fiches...");
                                 break;
-                            case "fiche_generation":
-                                toast.update("Analyse articles: " + data.total + " articles");
+                            case "fiche_check_progress":
+                                toast.update("Fiches: " + (data.current || 0) + "/" + (data.total || "?"));
                                 break;
-                            case "lecture_start":
-                                toast.update("Analyse: " + (data.title || data.zotero_key || ""));
+                            case "fiche_check_complete":
+                                toast.update("Fiches: " + (data.available || 0) + " disponibles, " + (data.missing || 0) + " manquantes");
                                 break;
-                            case "lecture_progress":
-                                toast.update("Analyse: " + data.step + "...");
+                            case "analysis_start":
+                                toast.update("Début de l'analyse des articles...");
                                 break;
-                            case "fiche_generation_complete":
-                                toast.update("Fiches prêtes: " + data.fiches_count);
+                            case "analysis_article_start":
+                                toast.update("Analyse: " + (data.title || data.key || "article"));
                                 break;
-                            case "synthesis":
-                                toast.update("Synthèse LLM...");
+                            case "analysis_article_complete":
+                                toast.update("Analysé (" + (data.current || 0) + "/" + (data.total || 0) + ")");
                                 break;
-                            case "storage":
+                            case "analysis_complete":
+                                toast.update("Analyses terminées!");
+                                break;
+                            case "synthesis_start":
+                                toast.update("Synthèse: chargement des fiches...");
+                                break;
+                            case "synthesis_loading_fiches":
+                                toast.update("Synthèse: chargement des fiches...");
+                                break;
+                            case "synthesis_generating":
+                                toast.update("Synthèse: génération en cours...");
+                                break;
+                            case "synthesis_complete":
+                                toast.update("Synthèse générée!");
+                                break;
+                            case "storage_start":
                                 toast.update("Stockage...");
                                 break;
-                            case "complete":
-                                toast.success("Synthèse complétée!");
-                                self.log("Synthèse v2 complètée: " + JSON.stringify(data).substring(0, 200));
+                            case "storage_dropbox_upload":
+                                toast.update("Upload Dropbox...");
                                 break;
-                            case "error":
-                                toast.error("Erreur: " + (data.error || data.message || "Erreur inconnue"));
-                                self.log("Synthèse v2 erreur: " + data.error);
+                            case "storage_zotero_attach":
+                                toast.update("Attachement Zotero...");
+                                break;
+                            case "storage_complete":
+                                toast.update("Stockage terminé!");
+                                break;
+                            case "workflow_complete":
+                                toast.success("Synthèse complétée!");
+                                self.log("Workflow terminé: " + JSON.stringify(data).substring(0, 200));
+                                break;
+                            case "workflow_error":
+                                toast.error("Erreur: " + message);
+                                self.log("Erreur workflow: " + message);
+                                break;
+                            default:
+                                if (message) {
+                                    toast.update(message);
+                                }
                                 break;
                         }
                     } catch (e) {

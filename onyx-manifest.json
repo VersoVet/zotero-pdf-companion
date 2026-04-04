@@ -1,0 +1,74 @@
+{
+  "name": "zotero-pdf-companion-plugin",
+  "version": "4.9.24",
+  "core": {
+    "display_name": "Zotero PDF Companion",
+    "description": "Onyx bibliography management integration for Zotero - PDF recovery, metadata enrichment, paper reading, collection maintenance",
+    "status": "production",
+    "routing": {}
+  },
+  "heart": {
+    "deployment": {
+      "target_host": "172.16.0.2",
+      "platform": "windows"
+    },
+    "lifecycle": {
+      "run_mode": "extension",
+      "auto_start": false
+    }
+  },
+  "forge": {
+    "type": "custom",
+    "brain_area": "prefrontal",
+    "repository": "VersoVet/zotero-pdf-companion-plugin",
+    "development": {
+      "dev_platform": "dendrite",
+      "test_platform": "verso-acqui",
+      "remote_mount": true,
+      "dev_status": "production",
+      "progress_percent": 100
+    },
+    "custom": {
+      "target_app": "zotero",
+      "build_output": "*.xpi",
+      "components": [
+        {
+          "name": "extension",
+          "type": "extension",
+          "host": "172.16.0.2",
+          "required_files": ["bootstrap.js", "pdfcompanion.js"]
+        }
+      ],
+      "vault_keys": ["ssh_password"]
+    }
+  },
+  "zotero": {
+    "manifest_version": 2,
+    "author": "Onyx",
+    "icons": {
+      "48": "skin/icon.png",
+      "96": "skin/icon@2x.png"
+    },
+    "applications": {
+      "zotero": {
+        "id": "pdf-companion@onyx.local",
+        "update_url": "https://raw.githubusercontent.com/VersoVet/zotero-pdf-companion/main/updates.json",
+        "strict_min_version": "6.999",
+        "strict_max_version": "8.0.*"
+      }
+    },
+    "options_ui": {
+      "page": "options.xhtml"
+    },
+    "defaults": {
+      "preferences": "prefs.js"
+    }
+  },
+  "dashboard": {
+    "enabled": true,
+    "page": "/",
+    "icon": "book-open",
+    "category": "skill",
+    "color": "#e67e22"
+  }
+}

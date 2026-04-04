@@ -5686,24 +5686,6 @@ PdfCompanion = {
         .text-input::placeholder {
             color: #666;
         }
-        select {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #444;
-            border-radius: 6px;
-            background: #2a2a2a;
-            color: #e0e0e0;
-            font-size: 0.95em;
-            cursor: pointer;
-        }
-        select:focus {
-            outline: none;
-            border-color: #4a7c43;
-        }
-        select option {
-            background: #1e1e1e;
-            color: #e0e0e0;
-        }
         .hidden {
             display: none;
         }
@@ -5751,13 +5733,28 @@ PdfCompanion = {
     <div class="form-container">
         <div class="form-group">
             <label>Mode de lecture</label>
-            <select id="lectureMode">
-                <option value="standard" selected>Standard - 4-6 keypoints, veille bibliographique rapide</option>
-                <option value="full">Full - 6-10 keypoints, revue systématique détaillée</option>
-                <option value="section">Section - 4-8 keypoints, analyse par sections GROBID</option>
-                <option value="thesis">Thesis - 10-15 keypoints, qualité doctorale pour publication</option>
-                <option value="prisma">PRISMA - Format PRISMA pour méta-analyses systématiques</option>
-            </select>
+            <div class="radio-group">
+                <div class="radio-item">
+                    <input type="radio" name="lectureMode" id="modeStandard" value="standard" checked>
+                    <label for="modeStandard">Standard - 4-6 keypoints, veille rapide</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="lectureMode" id="modeFull" value="full">
+                    <label for="modeFull">Full - 6-10 keypoints, revue détaillée</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="lectureMode" id="modeSection" value="section">
+                    <label for="modeSection">Section - 4-8 keypoints, par sections</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="lectureMode" id="modeThesis" value="thesis">
+                    <label for="modeThesis">Thesis - 10-15 keypoints, qualité doctorale</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="lectureMode" id="modePrisma" value="prisma">
+                    <label for="modePrisma">PRISMA - Format PRISMA pour méta-analyses</label>
+                </div>
+            </div>
         </div>
 
         <div class="form-group">
@@ -5815,7 +5812,7 @@ PdfCompanion = {
         }
 
         function startSynthesis() {
-            var lectureMode = document.getElementById('lectureMode').value || 'standard';
+            var lectureMode = getSelectedRadio('lectureMode') || 'standard';
             var llmProvider = getSelectedRadio('llmProvider') || 'claude_cli';
             var analyzeNoFiche = document.getElementById('analyzeNoFiche').checked;
             var replaceExisting = document.getElementById('replaceExisting').checked;

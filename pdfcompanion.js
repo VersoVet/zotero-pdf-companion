@@ -5180,48 +5180,66 @@ PdfCompanion = {
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: #f0f0f0;
-            padding: 20px;
+            padding: 15px;
         }
         .container {
-            max-width: 350px;
+            max-width: 420px;
             background: white;
             border-radius: 8px;
-            padding: 20px;
+            padding: 18px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-height: 80vh;
+            overflow-y: auto;
         }
         h2 {
-            margin: 0 0 20px 0;
+            margin: 0 0 18px 0;
             font-size: 1.1em;
             color: #333;
         }
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
-        label {
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 4px;
+            color: #333;
+            font-size: 0.9em;
+        }
+        .checkbox-label {
             display: flex;
             align-items: center;
             cursor: pointer;
             color: #333;
-            font-size: 0.95em;
+            font-size: 0.9em;
+            font-weight: normal;
         }
         input[type="checkbox"] {
-            margin-right: 10px;
-            width: 18px;
-            height: 18px;
+            margin-right: 8px;
+            width: 16px;
+            height: 16px;
             cursor: pointer;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9em;
+            margin-top: 3px;
         }
         select {
             width: 100%;
             padding: 8px;
             border: 1px solid #ddd;
             border-radius: 4px;
-            font-size: 0.95em;
-            margin-top: 5px;
+            font-size: 0.9em;
+            margin-top: 3px;
         }
         .buttons {
             display: flex;
             gap: 10px;
-            margin-top: 20px;
+            margin-top: 18px;
         }
         button {
             flex: 1;
@@ -5242,32 +5260,81 @@ PdfCompanion = {
         }
         .btn-ok:hover { background: #218838; }
         .btn-cancel:hover { background: #bbb; }
+        .section-title {
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #666;
+            margin-top: 12px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>Paramètres Synthèse</h2>
+
+        <div class="section-title">Options de traitement</div>
         <div class="form-group">
-            <label>
+            <label class="checkbox-label">
                 <input type="checkbox" id="lecture" checked>
-                Analyser les articles
+                Analyser les articles manquants
             </label>
         </div>
         <div class="form-group">
-            <label>
+            <label class="checkbox-label">
                 <input type="checkbox" id="replace" checked>
                 Remplacer les synthèses existantes
             </label>
         </div>
+
+        <div class="section-title">Configuration</div>
         <div class="form-group">
             <label for="mode">Mode de lecture</label>
             <select id="mode">
                 <option value="standard" selected>Standard (5-8 keypoints, revue rapide)</option>
                 <option value="full">Full (6-10 keypoints, revue détaillée)</option>
                 <option value="thesis">Thesis (10-15 keypoints, travail académique)</option>
-                <option value="section">Section (auto, par sections du document)</option>
+                <option value="section">Section (analyse par sections du document)</option>
+                <option value="prisma">PRISMA (revue systématique)</option>
             </select>
         </div>
+
+        <div class="form-group">
+            <label for="level">Niveau de détail</label>
+            <select id="level">
+                <option value="complet" selected>Complet (exhaustif)</option>
+                <option value="moyen">Moyen (équilibré)</option>
+                <option value="compact">Compact (essentiel)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="provider">Provider LLM</label>
+            <select id="provider">
+                <option value="claude_cli" selected>Claude CLI (recommandé)</option>
+                <option value="sambanova">SambaNova Cloud</option>
+                <option value="gemini">Google Gemini</option>
+                <option value="openai">OpenAI GPT-4</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="focus">Focus de recherche (optionnel)</label>
+            <input type="text" id="focus" placeholder="Ex: mécanismes d'action, effets secondaires...">
+        </div>
+
+        <div class="form-group">
+            <label for="language">Langue</label>
+            <select id="language">
+                <option value="fr" selected>Français</option>
+                <option value="en">English</option>
+                <option value="es">Español</option>
+                <option value="de">Deutsch</option>
+            </select>
+        </div>
+
         <div class="buttons">
             <button class="btn-ok" id="btn-ok">OK</button>
             <button class="btn-cancel" id="btn-cancel">Annuler</button>
@@ -5281,7 +5348,11 @@ PdfCompanion = {
             result = {
                 lecture: document.getElementById("lecture").checked,
                 replace: document.getElementById("replace").checked,
-                lecture_mode: document.getElementById("mode").value
+                lecture_mode: document.getElementById("mode").value,
+                level: document.getElementById("level").value,
+                provider: document.getElementById("provider").value,
+                focus: document.getElementById("focus").value.trim() || null,
+                language: document.getElementById("language").value
             };
             window.close();
         };
@@ -5332,9 +5403,20 @@ PdfCompanion = {
                   encodeURIComponent(collection.key) + "/stream-v2?" +
                   "lecture=" + (params.lecture ? "true" : "false") +
                   "&lecture_mode=" + encodeURIComponent(params.lecture_mode) +
-                  "&replace=" + (params.replace ? "true" : "false");
+                  "&replace=" + (params.replace ? "true" : "false") +
+                  "&provider=" + encodeURIComponent(params.provider);
 
-        this.log("Synthèse v2: " + url);
+        // Prepare body with optional parameters
+        let requestBody = null;
+        if (params.focus || params.level !== "complet" || params.language !== "fr") {
+            requestBody = JSON.stringify({
+                focus: params.focus || undefined,
+                level: params.level,
+                language: params.language
+            });
+        }
+
+        this.log("Synthèse v2: " + url + (requestBody ? " with body: " + requestBody : ""));
         let toast = this.Toast.progress("Synthèse - " + collection.name.substring(0, 30));
 
         await new Promise((resolve, reject) => {
@@ -5343,6 +5425,9 @@ PdfCompanion = {
 
             xhr.open("GET", url, true);
             xhr.setRequestHeader("Accept", "text/event-stream");
+            if (requestBody) {
+                xhr.setRequestHeader("Content-Type", "application/json");
+            }
 
             xhr.onprogress = function() {
                 let newData = xhr.responseText.substring(lastIndex);
@@ -5416,7 +5501,7 @@ PdfCompanion = {
                 reject(new Error("Connexion échouée"));
             };
 
-            xhr.send();
+            xhr.send(requestBody);
         });
     },
 

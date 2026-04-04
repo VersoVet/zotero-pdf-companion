@@ -2868,13 +2868,12 @@ PdfCompanion = {
             let url = this.config.paperReaderUrl + "/synthesize/collection/" +
                 encodeURIComponent(collection.key) + "/stream-v2";
 
-            this.log("POST stream-v2: " + url);
+            this.log("GET stream-v2: " + url);
 
             await new Promise((resolve, reject) => {
                 let xhr = new XMLHttpRequest();
-                xhr.open("POST", url, true);
+                xhr.open("GET", url, true);
                 xhr.setRequestHeader("Accept", "text/event-stream");
-                xhr.setRequestHeader("Content-Type", "application/json");
 
                 let buffer = "";
 
@@ -3321,16 +3320,28 @@ PdfCompanion = {
                 "lecture_mode=" + encodeURIComponent(lectureMode) +
                 "&lecture=" + (lecture ? "true" : "false");
 
-            if (focus) {
-                url += "&focus=" + encodeURIComponent(focus);
+            if (provider) {
+                url += "&provider=" + encodeURIComponent(provider);
+            }
+            if (replace) {
+                url += "&replace=" + (replace ? "true" : "false");
             }
 
-            this.log("GET stream-v2: " + url);
+            // Prepare body with focus
+            let requestBody = null;
+            if (focus) {
+                requestBody = JSON.stringify({ focus: focus });
+            }
+
+            this.log("GET stream-v2: " + url + (requestBody ? " with body: " + requestBody : ""));
 
             await new Promise((resolve, reject) => {
                 let xhr = new XMLHttpRequest();
                 xhr.open("GET", url, true);
                 xhr.timeout = 600000; // 10 minutes
+                if (requestBody) {
+                    xhr.setRequestHeader("Content-Type", "application/json");
+                }
 
                 xhr.onload = () => {
                     if (xhr.status >= 200 && xhr.status < 300) {
@@ -3372,7 +3383,7 @@ PdfCompanion = {
                     }
                 };
 
-                xhr.send();
+                xhr.send(requestBody);
             });
 
             if (finalFilename) {
@@ -5015,7 +5026,11 @@ PdfCompanion = {
         let url = this.config.paperReaderUrl + "/synthesize/collection/" +
             encodeURIComponent(collection.key) + "/stream-v2?" +
             "lecture_mode=" + encodeURIComponent(level) +
-            "&lecture=" + "true";
+            "&lecture=true";
+
+        if (provider) {
+            url += "&provider=" + encodeURIComponent(provider);
+        }
 
         this.log("SSE Synthesis URL: " + url);
 
@@ -5315,8 +5330,9 @@ PdfCompanion = {
         let self = this;
         let url = this.config.paperReaderUrl + "/synthesize/collection/" +
                   encodeURIComponent(collection.key) + "/stream-v2?" +
-                  "lecture=" + params.lecture +
-                  "&lecture_mode=" + encodeURIComponent(params.lecture_mode);
+                  "lecture=" + (params.lecture ? "true" : "false") +
+                  "&lecture_mode=" + encodeURIComponent(params.lecture_mode) +
+                  "&replace=" + (params.replace ? "true" : "false");
 
         this.log("Synthèse v2: " + url);
         let toast = this.Toast.progress("Synthèse - " + collection.name.substring(0, 30));
@@ -5763,20 +5779,24 @@ PdfCompanion = {
     async runUnifiedSynthesis(collection, synthesisType, lectureMode, llmProvider, analyzeNoFiche, replaceExisting, focus) {
         let self = this;
         let collectionName = collection.name;
+
+        // Build final lecture_mode - if synthesisType is "prisma", use that, otherwise use lectureMode
+        let finalLectureMode = synthesisType === "prisma" ? "prisma" : lectureMode;
+
         let url = this.config.paperReaderUrl + "/synthesize/collection/" +
                   encodeURIComponent(collection.key) + "/stream-v2?" +
-                  "lecture_mode=" + encodeURIComponent(lectureMode) +
-                  "&lecture=true" +
+                  "lecture_mode=" + encodeURIComponent(finalLectureMode) +
+                  "&lecture=" + (analyzeNoFiche ? "true" : "false") +
                   "&provider=" + encodeURIComponent(llmProvider) +
-                  "&prisma=" + (synthesisType === "prisma" ? "true" : "false") +
-                  "&analyze_no_fiche=" + (analyzeNoFiche ? "true" : "false") +
-                  "&replace_synthesis=" + (replaceExisting ? "true" : "false");
+                  "&replace=" + (replaceExisting ? "true" : "false");
 
+        // Prepare body for focus parameter (if provided)
+        let requestBody = null;
         if (focus) {
-            url += "&focus=" + encodeURIComponent(focus);
+            requestBody = JSON.stringify({ focus: focus });
         }
 
-        this.log("Unified synthesis: " + url);
+        this.log("Unified synthesis: " + url + (requestBody ? " with body: " + requestBody : ""));
         let toast = this.Toast.progress("Synthese " + (synthesisType === "prisma" ? "PRISMA" : "Standard") + " - " + collectionName.substring(0, 30));
 
         await new Promise((resolve, reject) => {
@@ -5785,6 +5805,9 @@ PdfCompanion = {
 
             xhr.open("GET", url, true);
             xhr.setRequestHeader("Accept", "text/event-stream");
+            if (requestBody) {
+                xhr.setRequestHeader("Content-Type", "application/json");
+            }
 
             xhr.onprogress = function() {
                 let newData = xhr.responseText.substring(lastIndex);
@@ -5859,7 +5882,7 @@ PdfCompanion = {
             };
 
             try {
-                xhr.send();
+                xhr.send(requestBody);
             } catch (e) {
                 self.log("Unified synthesis xhr.send error: " + e.message);
                 toast.error("Erreur: " + e.message);
@@ -6374,7 +6397,7 @@ PdfCompanion = {
 
             btn.addEventListener('click', () => {
                 let focus = focusInput.value.trim();
-                let level = levelSelect.value;
+                let levelValue = levelSelect.value;
 
                 btn.disabled = true;
                 focusInput.disabled = true;
@@ -6383,11 +6406,19 @@ PdfCompanion = {
 
                 let sseUrl = self.config.paperReaderUrl + "/synthesize/collection/" +
                     encodeURIComponent(collection.key) + "/stream-v2?" +
-                    "focus=" + encodeURIComponent(focus) +
-                    "&lecture_mode=" + encodeURIComponent(level) +
+                    "lecture_mode=standard" +
                     "&lecture=true";
 
-                self.log("SSE synthesis: " + sseUrl);
+                // Build request body with focus and level
+                let requestBody = null;
+                if (focus || levelValue !== "complet") {
+                    requestBody = JSON.stringify({
+                        focus: focus || undefined,
+                        level: levelValue
+                    });
+                }
+
+                self.log("SSE synthesis: " + sseUrl + (requestBody ? " with body: " + requestBody : ""));
 
                 function appendLog(text, cssClass) {
                     let span = win.document.createElement('span');
@@ -6402,6 +6433,9 @@ PdfCompanion = {
 
                 xhr.open("GET", sseUrl, true);
                 xhr.setRequestHeader("Accept", "text/event-stream");
+                if (requestBody) {
+                    xhr.setRequestHeader("Content-Type", "application/json");
+                }
 
                 xhr.onprogress = () => {
                     let newData = xhr.responseText.substring(lastIndex);
@@ -6486,7 +6520,7 @@ PdfCompanion = {
                 };
 
                 xhr.timeout = 600000; // 10 minutes
-                xhr.send();
+                xhr.send(requestBody);
             });
         }, { once: true });
     },

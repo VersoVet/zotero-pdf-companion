@@ -1,11 +1,11 @@
 {
   "manifest_version": 2,
   "name": "PDF Companion",
-  "version": "4.10.0",
-  "description": "Auto PDF fetch for Zotero (v4.10.0)",
+  "version": "4.11.0",
+  "description": "Auto PDF fetch for Zotero (v4.11.0)",
   "author": "Onyx",
   "forge": {
-    "type": "custom",
+    "type": "addon",
     "repository": "VersoVet/zotero-pdf-companion-plugin"
   },
   "icons": {

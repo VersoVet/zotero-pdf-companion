@@ -319,32 +319,17 @@ PdfCompanion = {
             let menupopup = doc.createXULElement('menupopup');
             menupopup.id = 'pdfcompanion-tools-popup';
 
-            // Menu item "Lire l'article" - opens dialog
+            // Menu item "Lecture..." - unified dialog
             let analyzeItem = doc.createXULElement('menuitem');
-            analyzeItem.id = 'pdfcompanion-tools-analyze';
-            analyzeItem.setAttribute('label', 'Lire l\'article...');
-            analyzeItem.addEventListener('command', () => this.openLectureDialog());
+            analyzeItem.id = 'pdfcompanion-tools-lecture';
+            analyzeItem.setAttribute('label', 'Lecture...');
+            analyzeItem.addEventListener('command', () => this.openUnifiedLectureDialog());
             menupopup.appendChild(analyzeItem);
 
-            // === Submenu: Lecture ===
-            let toolsLectureMenu = doc.createXULElement('menu');
-            toolsLectureMenu.id = 'pdfcompanion-tools-lecture';
-            toolsLectureMenu.setAttribute('label', 'Lecture');
-            let toolsLecturePopup = doc.createXULElement('menupopup');
-            let toolsLectureItems = [
-                { id: 'lecturecomplete', label: 'Lecture complete', action: () => this.openLectureDialog() },
-                { id: 'lecturefocus', label: 'Lecture focale', action: () => this.openFocusedLectureDialog() },
-                { id: 'showfiches', label: 'Afficher les lectures', action: () => this.showReadingCards() }
-            ];
-            for (let item of toolsLectureItems) {
-                let menuitem = doc.createXULElement('menuitem');
-                menuitem.id = 'pdfcompanion-tools-' + item.id;
-                menuitem.setAttribute('label', item.label);
-                menuitem.addEventListener('command', item.action);
-                toolsLecturePopup.appendChild(menuitem);
-            }
-            toolsLectureMenu.appendChild(toolsLecturePopup);
-            menupopup.appendChild(toolsLectureMenu);
+            // Separator before Maintenance
+            let sepMaintenance = doc.createXULElement('menuseparator');
+            sepMaintenance.id = 'pdfcompanion-tools-sep-maintenance';
+            menupopup.appendChild(sepMaintenance);
 
             // === Submenu: Maintenance ===
             let toolsMaintenanceMenu = doc.createXULElement('menu');
@@ -434,32 +419,17 @@ PdfCompanion = {
             let menupopup = doc.createXULElement('menupopup');
             menupopup.id = 'pdfcompanion-context-popup';
 
-            // Menu item "Lire l'article" - opens dialog
+            // Menu item "Lecture..." - unified dialog
             let ctxAnalyzeItem = doc.createXULElement('menuitem');
-            ctxAnalyzeItem.id = 'pdfcompanion-context-analyze';
-            ctxAnalyzeItem.setAttribute('label', 'Lire l\'article...');
-            ctxAnalyzeItem.addEventListener('command', () => this.openLectureDialog());
+            ctxAnalyzeItem.id = 'pdfcompanion-context-lecture';
+            ctxAnalyzeItem.setAttribute('label', 'Lecture...');
+            ctxAnalyzeItem.addEventListener('command', () => this.openUnifiedLectureDialog());
             menupopup.appendChild(ctxAnalyzeItem);
 
-            // === Submenu: Lecture ===
-            let lectureMenu = doc.createXULElement('menu');
-            lectureMenu.id = 'pdfcompanion-context-lecture';
-            lectureMenu.setAttribute('label', 'Lecture');
-            let lecturePopup = doc.createXULElement('menupopup');
-            let lectureItems = [
-                { id: 'lecturecomplete', label: 'Lecture complete', action: () => this.openLectureDialog() },
-                { id: 'lecturefocus', label: 'Lecture focale', action: () => this.openFocusedLectureDialog() },
-                { id: 'showfiches', label: 'Afficher les lectures', action: () => this.showReadingCards() }
-            ];
-            for (let item of lectureItems) {
-                let menuitem = doc.createXULElement('menuitem');
-                menuitem.id = 'pdfcompanion-context-' + item.id;
-                menuitem.setAttribute('label', item.label);
-                menuitem.addEventListener('command', item.action);
-                lecturePopup.appendChild(menuitem);
-            }
-            lectureMenu.appendChild(lecturePopup);
-            menupopup.appendChild(lectureMenu);
+            // Separator before Maintenance
+            let ctxSepMaintenance = doc.createXULElement('menuseparator');
+            ctxSepMaintenance.id = 'pdfcompanion-context-sep-maintenance';
+            menupopup.appendChild(ctxSepMaintenance);
 
             // === Submenu: Maintenance ===
             let maintenanceMenu = doc.createXULElement('menu');
@@ -516,38 +486,19 @@ PdfCompanion = {
             let menupopup = doc.createXULElement('menupopup');
             menupopup.id = 'pdfcompanion-collection-popup';
 
-            // Menu item principal "Synthèse Bibliographique" - opens dialog
+            // Menu item "Synthese..." - unified synthesis dialog
             let synthesisItem = doc.createXULElement('menuitem');
-            synthesisItem.id = 'pdfcompanion-collection-biblio-synthesis';
-            synthesisItem.setAttribute('label', 'Synthese Bibliographique...');
-            synthesisItem.addEventListener('command', () => this.openSynthesisDialog());
+            synthesisItem.id = 'pdfcompanion-collection-synthesis';
+            synthesisItem.setAttribute('label', 'Synthese...');
+            synthesisItem.addEventListener('command', () => this.openUnifiedSynthesisDialog());
             menupopup.appendChild(synthesisItem);
 
-            // Menu item "Synthèse PRISMA" - opens dialog
-            let prismaItem = doc.createXULElement('menuitem');
-            prismaItem.id = 'pdfcompanion-collection-prisma-synthesis';
-            prismaItem.setAttribute('label', 'Synthese PRISMA...');
-            prismaItem.addEventListener('command', () => this.openPrismaDialog());
-            menupopup.appendChild(prismaItem);
-
-            let items = [
-                { id: 'sep0', separator: true },
-                { id: 'synthesize-collection-v2', label: 'Synthèse Collection', action: () => this.synthesizeCollectionV2() }
-            ];
-
-            for (let item of items) {
-                if (item.separator) {
-                    let sep = doc.createXULElement('menuseparator');
-                    sep.id = 'pdfcompanion-collection-' + item.id;
-                    menupopup.appendChild(sep);
-                } else {
-                    let menuitem = doc.createXULElement('menuitem');
-                    menuitem.id = 'pdfcompanion-collection-' + item.id;
-                    menuitem.setAttribute('label', item.label);
-                    menuitem.addEventListener('command', item.action);
-                    menupopup.appendChild(menuitem);
-                }
-            }
+            // Menu item "Creer documents..." - document export dialog
+            let exportItem = doc.createXULElement('menuitem');
+            exportItem.id = 'pdfcompanion-collection-export';
+            exportItem.setAttribute('label', 'Creer documents...');
+            exportItem.addEventListener('command', () => this.openDocumentExportDialog());
+            menupopup.appendChild(exportItem);
 
             submenu.appendChild(menupopup);
             collectionMenu.appendChild(submenu);
@@ -1239,318 +1190,9 @@ PdfCompanion = {
 
     // === FOCUSED LECTURE ===
     async openFocusedLectureDialog() {
-        let items = Zotero.getActiveZoteroPane().getSelectedItems();
-        if (!items || items.length === 0) {
-            this.showNotification("PDF Companion", "Aucun item selectionne");
-            return;
-        }
-        items = items.filter(item => !item.isAttachment() && !item.isNote());
-        if (items.length !== 1) {
-            this.showNotification("PDF Companion", "Selectionnez un seul article");
-            return;
-        }
-        let item = items[0];
-        let title = item.getField("title") || "Article";
-        let itemKey = item.key;
-
-        let self = this;
-
-        let html = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Lecture focus</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: #1e1e1e;
-            color: #e0e0e0;
-            padding: 0;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        .header {
-            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
-            color: white;
-            padding: 18px 22px;
-            flex-shrink: 0;
-        }
-        .header h1 {
-            font-size: 1.2em;
-            font-weight: 600;
-            margin-bottom: 6px;
-        }
-        .header .subtitle {
-            font-size: 0.85em;
-            opacity: 0.9;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .header .item-key {
-            font-size: 0.75em;
-            opacity: 0.7;
-            margin-top: 4px;
-            font-family: monospace;
-        }
-        .form-container {
-            padding: 18px 22px;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            overflow-y: auto;
-        }
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .form-group > label {
-            font-weight: 600;
-            font-size: 0.9em;
-            color: #b0b0b0;
-            margin-bottom: 4px;
-        }
-        .radio-group {
-            background: #2a2a2a;
-            border-radius: 6px;
-            padding: 8px 12px;
-        }
-        .radio-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 4px;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-        .radio-item:hover {
-            background: #353535;
-        }
-        .radio-item input[type="radio"] {
-            width: 16px;
-            height: 16px;
-            accent-color: #e67e22;
-            cursor: pointer;
-        }
-        .radio-item label {
-            cursor: pointer;
-            font-size: 0.9em;
-            color: #e0e0e0;
-        }
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 14px;
-            background: #2a2a2a;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-        .checkbox-group:hover {
-            background: #353535;
-        }
-        .checkbox-group input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            accent-color: #e67e22;
-            cursor: pointer;
-        }
-        .checkbox-label {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-        .checkbox-label span {
-            font-weight: 500;
-            color: #e0e0e0;
-            font-size: 0.95em;
-        }
-        .checkbox-label small {
-            color: #888;
-            font-size: 0.8em;
-        }
-        .text-input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #444;
-            border-radius: 6px;
-            background: #2a2a2a;
-            color: #e0e0e0;
-            font-size: 0.95em;
-            resize: vertical;
-            min-height: 80px;
-        }
-        .text-input:focus {
-            outline: none;
-            border-color: #e67e22;
-        }
-        .text-input::placeholder {
-            color: #666;
-        }
-        .checkboxes-row {
-            display: flex;
-            gap: 12px;
-        }
-        .checkboxes-row .checkbox-group {
-            flex: 1;
-        }
-        .button-row {
-            display: flex;
-            gap: 10px;
-            padding: 16px 22px;
-            background: #252525;
-            border-top: 1px solid #333;
-            flex-shrink: 0;
-        }
-        .btn {
-            flex: 1;
-            padding: 12px 16px;
-            border: none;
-            border-radius: 6px;
-            font-size: 0.95em;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
-            color: white;
-        }
-        .btn-primary:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(230, 126, 34, 0.4);
-        }
-        .btn-secondary {
-            background: #3c3c3c;
-            color: #e0e0e0;
-            border: 1px solid #555;
-        }
-        .btn-secondary:hover {
-            background: #4a4a4a;
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>Lecture focus</h1>
-        <div class="subtitle" title="${this.escapeHtml(title)}">${this.escapeHtml(title.length > 50 ? title.substring(0, 50) + "..." : title)}</div>
-        <div class="item-key">Cle: ${this.escapeHtml(itemKey)}</div>
-    </div>
-    <div class="form-container">
-        <div class="form-group">
-            <label>Sujet de focus *</label>
-            <textarea class="text-input" id="focusText" placeholder="Ex: effets secondaires, mecanismes d'action, indications, posologie, contre-indications..."></textarea>
-        </div>
-        <div class="form-group">
-            <label>Modele LLM</label>
-            <div class="radio-group">
-                <div class="radio-item">
-                    <input type="radio" name="llmProvider" id="providerClaude" value="claude_cli" checked>
-                    <label for="providerClaude">Claude (CLI) - Recommande</label>
-                </div>
-                <div class="radio-item">
-                    <input type="radio" name="llmProvider" id="providerSambanova" value="sambanova">
-                    <label for="providerSambanova">SambaNova - Rapide</label>
-                </div>
-                <div class="radio-item">
-                    <input type="radio" name="llmProvider" id="providerGroq" value="groq">
-                    <label for="providerGroq">Groq - Tres rapide</label>
-                </div>
-            </div>
-        </div>
-        <div class="checkboxes-row">
-            <label class="checkbox-group" for="storeDropbox">
-                <input type="checkbox" id="storeDropbox" checked>
-                <div class="checkbox-label">
-                    <span>Dropbox</span>
-                    <small>Sauvegarder sur Dropbox</small>
-                </div>
-            </label>
-            <label class="checkbox-group" for="linkZotero">
-                <input type="checkbox" id="linkZotero" checked>
-                <div class="checkbox-label">
-                    <span>Zotero</span>
-                    <small>Creer un attachment</small>
-                </div>
-            </label>
-        </div>
-    </div>
-    <div class="button-row">
-        <button class="btn btn-secondary" onclick="window.close()">Annuler</button>
-        <button class="btn btn-primary" onclick="startFocusedLecture()">Lancer l'extraction</button>
-    </div>
-    <script>
-        function getSelectedRadio(name) {
-            var radios = document.getElementsByName(name);
-            for (var i = 0; i < radios.length; i++) {
-                if (radios[i].checked) return radios[i].value;
-            }
-            return null;
-        }
-
-        function startFocusedLecture() {
-            var focus = document.getElementById('focusText').value.trim();
-            if (!focus) {
-                alert('Veuillez entrer un sujet de focus');
-                document.getElementById('focusText').focus();
-                return;
-            }
-            var provider = getSelectedRadio('llmProvider') || 'claude_cli';
-            var storeDropbox = document.getElementById('storeDropbox').checked;
-            var linkZotero = document.getElementById('linkZotero').checked;
-
-            if (window.pdfCompanionCallback) {
-                window.pdfCompanionCallback(focus, provider, storeDropbox, linkZotero);
-            }
-            window.close();
-        }
-
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && e.ctrlKey) {
-                startFocusedLecture();
-            } else if (e.key === 'Escape') {
-                window.close();
-            }
-        });
-
-        // Focus on textarea on load
-        setTimeout(function() {
-            document.getElementById('focusText').focus();
-        }, 100);
-    </script>
-</body>
-</html>`;
-
-        try {
-            let win = Services.ww.openWindow(
-                null,
-                "about:blank",
-                "_blank",
-                "chrome,centerscreen,resizable=yes,width=480,height=520",
-                null
-            );
-
-            win.addEventListener("load", () => {
-                win.document.open();
-                win.document.write(html);
-                win.document.close();
-                win.document.title = "Lecture focus";
-
-                win.pdfCompanionCallback = async (focus, provider, storeDropbox, linkZotero) => {
-                    self.log("Focused lecture: focus=" + focus + ", provider=" + provider);
-                    await self.runFocusedLecture(item, focus, provider, storeDropbox, linkZotero);
-                };
-            }, { once: true });
-
-            this.log("Opened focused lecture dialog for: " + title);
-        } catch (e) {
-            this.log("openFocusedLectureDialog error: " + e);
-            this.showNotification("Erreur", "Impossible d'ouvrir le dialogue");
-        }
+        // DEPRECATED: Redirect to unified dialog
+        this.log("openFocusedLectureDialog is deprecated, using openUnifiedLectureDialog");
+        return this.openUnifiedLectureDialog();
     },
 
     async runFocusedLecture(item, focus, provider, storeDropbox, linkZotero) {
@@ -1562,13 +1204,11 @@ PdfCompanion = {
 
         try {
             // Build URL like summarizePaper does (simple concatenation)
-            let url = this.config.paperReaderUrl + "/analyze/zotero/focused/stream?" +
+            let url = this.config.paperReaderUrl + "/analyze/zotero-stream?" +
                 "zotero_key=" + encodeURIComponent(item.key) +
                 "&focus=" + encodeURIComponent(focus) +
-                "&provider=" + encodeURIComponent(provider || "claude_cli") +
-                "&store_to_dropbox=" + (storeDropbox !== false ? "true" : "false") +
-                "&link_to_zotero=" + (linkZotero !== false ? "true" : "false") +
-                "&use_cache=true";
+                "&lecture_mode=" + encodeURIComponent("standard") +
+                "&provider=" + encodeURIComponent(provider || "claude_cli");
 
             this.log("URL: " + url.substring(0, 100) + "...");
 
@@ -1682,6 +1322,118 @@ PdfCompanion = {
 
     // === PAPER READER ===
     async openLectureDialog() {
+        // DEPRECATED: Redirect to unified dialog
+        this.log("openLectureDialog is deprecated, using openUnifiedLectureDialog");
+        return this.openUnifiedLectureDialog();
+    },
+
+    async openLectureDialogFallback(item) {
+        let title = item.getField("title") || "Article";
+        let ps = Services.prompt;
+        let modes = ["Standard - Analyse rapide", "Complete - Analyse approfondie", "Par section - Analyse detaillee", "These - Analyse these/memoire"];
+        let modeValues = ["standard", "full", "section", "thesis"];
+        let providers = ["Claude (CLI) - Recommande", "SambaNova - Rapide", "Groq - Tres rapide"];
+        let providerValues = ["claude_cli", "sambanova", "groq"];
+
+        let modeSelected = { value: 0 };
+        let modeOk = ps.select(Zotero.getMainWindow(), "Lecture d'article", "Type de lecture:", modes, modeSelected);
+        if (!modeOk) return;
+
+        let providerSelected = { value: 0 };
+        let providerOk = ps.select(Zotero.getMainWindow(), "Modele LLM", "Choisir le modele:", providers, providerSelected);
+        if (!providerOk) return;
+
+        let extractFigures = ps.confirm(Zotero.getMainWindow(), "Extraction figures", "Extraire les figures?");
+
+        await this.summarizePaper(item, modeValues[modeSelected.value], providerValues[providerSelected.value], extractFigures);
+    },
+
+    async summarizePaper(item, mode, provider, extractFigures, focus) {
+        let title = item.getField("title") || "Unknown";
+        let modeLabels = { "standard": "Standard", "full": "Complete", "section": "Par section", "thesis": "These" };
+        let modeLabel = modeLabels[mode] || mode;
+        provider = provider || "claude_cli";
+        extractFigures = extractFigures || false;
+        focus = focus || null;
+
+        let toast = this.Toast.progress("Lecture " + modeLabel + " - " + title.substring(0, 20));
+        toast.update("Connexion (" + provider + ")...");
+
+        try {
+            let url = this.config.paperReaderUrl + "/analyze/zotero-stream?" +
+                "zotero_key=" + encodeURIComponent(item.key) +
+                "&lecture_mode=" + encodeURIComponent(mode) +
+                "&provider=" + encodeURIComponent(provider) +
+                "&extract_figures=" + (extractFigures ? "true" : "false");
+
+            if (focus) {
+                url += "&focus=" + encodeURIComponent(focus);
+            }
+
+            this.log("SSE Paper Reader: " + url + " (mode=" + mode + ", focus=" + (focus ? "yes" : "no") + ")");
+
+            let self = this;
+            let finalResult = null;
+
+            // Use Zotero.HTTP.request with streaming callback
+            let lastIndex = 0;
+            await Zotero.HTTP.request("GET", url, {
+                headers: { "Accept": "text/event-stream" },
+                timeout: 900000, // 15 minutes
+                responseType: "text",
+                ignoreErrors: true,  // Ignore SSL certificate errors for self-signed certs
+                requestObserver: function(xhr) {
+                    xhr.onprogress = function() {
+                        let newData = xhr.responseText.substring(lastIndex);
+                        lastIndex = xhr.responseText.length;
+                        let lines = newData.split("\n");
+                        for (let line of lines) {
+                            if (line.startsWith("data: ")) {
+                                try {
+                                    let data = JSON.parse(line.substring(6));
+                                    self.log("SSE analyze: " + JSON.stringify(data));
+                                    toast.update(data.message || self.getAnalyzeStepText(data));
+                                    let evt = data.event || data.step;
+                                    if (data.done === true || evt === "termine" || evt === "complete") {
+                                        finalResult = { status: "success", data: data };
+                                    } else if (evt === "error" || evt === "erreur") {
+                                        finalResult = { status: "error", message: data.message || "Erreur inconnue" };
+                                    }
+                                } catch (e) {
+                                    self.log("SSE parse error: " + e);
+                                }
+                            }
+                        }
+                    };
+                }
+            });
+
+            toast.close();
+
+            if (!finalResult) {
+                this.showNotification("Erreur", "Pas de réponse du serveur");
+                return;
+            }
+
+            if (finalResult.status === "success") {
+                let ficheId = finalResult.data?.fiche_id || "";
+                let msg = title.substring(0, 40) + " - Fiche creee";
+                if (ficheId) msg += " (" + ficheId + ")";
+                this.showNotification("Lecture terminee!", msg);
+                // Reload item to show new tags (paper-reader-analyzed, #lecture)
+                await item.reload();
+                try { Zotero.Sync.Runner.sync(); } catch (e) {}
+            } else {
+                this.showNotification("Echec de la lecture", finalResult.message || "Erreur inconnue");
+            }
+        } catch (e) {
+            toast.close();
+            this.log("Paper Reader SSE error: " + e);
+            this.showNotification("Erreur", e.message || "Connexion échouée");
+        }
+    },
+
+    async openUnifiedLectureDialog() {
         let items = Zotero.getActiveZoteroPane().getSelectedItems();
         if (!items || items.length === 0) {
             this.showNotification("PDF Companion", "Aucun item selectionne");
@@ -1696,7 +1448,6 @@ PdfCompanion = {
         let title = item.getField("title") || "Article";
         let itemKey = item.key;
 
-        // Store reference for callback from dialog
         let self = this;
 
         let html = `<!DOCTYPE html>
@@ -1811,6 +1562,27 @@ PdfCompanion = {
             color: #888;
             font-size: 0.8em;
         }
+        .text-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #444;
+            border-radius: 6px;
+            background: #2a2a2a;
+            color: #e0e0e0;
+            font-size: 0.95em;
+            resize: vertical;
+            min-height: 80px;
+        }
+        .text-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .text-input::placeholder {
+            color: #666;
+        }
+        .hidden {
+            display: none;
+        }
         .button-row {
             display: flex;
             gap: 10px;
@@ -1872,8 +1644,18 @@ PdfCompanion = {
                     <input type="radio" name="lectureMode" id="modeThesis" value="thesis">
                     <label for="modeThesis">These - Analyse these/memoire</label>
                 </div>
+                <div class="radio-item">
+                    <input type="radio" name="lectureMode" id="modeFocus" value="focus">
+                    <label for="modeFocus">Focus - Sujet specifique</label>
+                </div>
             </div>
         </div>
+
+        <div class="form-group hidden" id="focusGroup">
+            <label>Question de focus</label>
+            <textarea class="text-input" id="focusText" placeholder="Ex: effets secondaires, mecanismes d'action, indications, posologie..."></textarea>
+        </div>
+
         <div class="form-group">
             <label>Modele LLM</label>
             <div class="radio-group">
@@ -1891,6 +1673,7 @@ PdfCompanion = {
                 </div>
             </div>
         </div>
+
         <label class="checkbox-group" for="extractFigures">
             <input type="checkbox" id="extractFigures">
             <div class="checkbox-label">
@@ -1912,24 +1695,53 @@ PdfCompanion = {
             return null;
         }
 
+        function toggleFocusGroup() {
+            var mode = getSelectedRadio('lectureMode');
+            var focusGroup = document.getElementById('focusGroup');
+            if (mode === 'focus') {
+                focusGroup.classList.remove('hidden');
+                setTimeout(function() {
+                    document.getElementById('focusText').focus();
+                }, 50);
+            } else {
+                focusGroup.classList.add('hidden');
+            }
+        }
+
         function startLecture() {
             var mode = getSelectedRadio('lectureMode') || 'standard';
             var provider = getSelectedRadio('llmProvider') || 'claude_cli';
             var extractFigures = document.getElementById('extractFigures').checked;
+            var focus = null;
+
+            if (mode === 'focus') {
+                focus = document.getElementById('focusText').value.trim();
+                if (!focus) {
+                    alert('Veuillez entrer une question de focus');
+                    document.getElementById('focusText').focus();
+                    return;
+                }
+            }
 
             if (window.pdfCompanionCallback) {
-                window.pdfCompanionCallback(mode, provider, extractFigures);
+                window.pdfCompanionCallback(mode, provider, extractFigures, focus);
             }
             window.close();
         }
 
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && e.ctrlKey) {
                 startLecture();
             } else if (e.key === 'Escape') {
                 window.close();
             }
         });
+
+        // Setup radio listeners for focus group visibility
+        var radios = document.getElementsByName('lectureMode');
+        for (var i = 0; i < radios.length; i++) {
+            radios[i].addEventListener('change', toggleFocusGroup);
+        }
     </script>
 </body>
 </html>`;
@@ -1939,7 +1751,7 @@ PdfCompanion = {
                 null,
                 "about:blank",
                 "_blank",
-                "chrome,centerscreen,resizable=yes,width=440,height=580",
+                "chrome,centerscreen,resizable=yes,width=480,height=660",
                 null
             );
 
@@ -1949,119 +1761,20 @@ PdfCompanion = {
                 win.document.close();
                 win.document.title = "Lecture d'article";
 
-                // Set callback for form submission
-                win.pdfCompanionCallback = async (mode, provider, extractFigures) => {
-                    self.log("Lecture dialog: mode=" + mode + ", provider=" + provider + ", extractFigures=" + extractFigures);
-                    await self.summarizePaper(item, mode, provider, extractFigures);
+                win.pdfCompanionCallback = async (mode, provider, extractFigures, focus) => {
+                    self.log("Unified lecture dialog: mode=" + mode + ", provider=" + provider + ", focus=" + (focus || "null"));
+                    if (mode === "focus") {
+                        await self.summarizePaper(item, "standard", provider, extractFigures, focus);
+                    } else {
+                        await self.summarizePaper(item, mode, provider, extractFigures, focus);
+                    }
                 };
             }, { once: true });
 
-            this.log("Opened lecture dialog for: " + title);
+            this.log("Opened unified lecture dialog for: " + title);
         } catch (e) {
-            this.log("openLectureDialog error: " + e);
-            // Fallback to native prompts
+            this.log("openUnifiedLectureDialog error: " + e);
             this.openLectureDialogFallback(item);
-        }
-    },
-
-    async openLectureDialogFallback(item) {
-        let title = item.getField("title") || "Article";
-        let ps = Services.prompt;
-        let modes = ["Standard - Analyse rapide", "Complete - Analyse approfondie", "Par section - Analyse detaillee", "These - Analyse these/memoire"];
-        let modeValues = ["standard", "full", "section", "thesis"];
-        let providers = ["Claude (CLI) - Recommande", "SambaNova - Rapide", "Groq - Tres rapide"];
-        let providerValues = ["claude_cli", "sambanova", "groq"];
-
-        let modeSelected = { value: 0 };
-        let modeOk = ps.select(Zotero.getMainWindow(), "Lecture d'article", "Type de lecture:", modes, modeSelected);
-        if (!modeOk) return;
-
-        let providerSelected = { value: 0 };
-        let providerOk = ps.select(Zotero.getMainWindow(), "Modele LLM", "Choisir le modele:", providers, providerSelected);
-        if (!providerOk) return;
-
-        let extractFigures = ps.confirm(Zotero.getMainWindow(), "Extraction figures", "Extraire les figures?");
-
-        await this.summarizePaper(item, modeValues[modeSelected.value], providerValues[providerSelected.value], extractFigures);
-    },
-
-    async summarizePaper(item, mode, provider, extractFigures) {
-        let title = item.getField("title") || "Unknown";
-        let modeLabels = { "standard": "Standard", "full": "Complete", "section": "Par section", "thesis": "These" };
-        let modeLabel = modeLabels[mode] || mode;
-        provider = provider || "claude_cli";
-        extractFigures = extractFigures || false;
-
-        let toast = this.Toast.progress("Lecture " + modeLabel + " - " + title.substring(0, 20));
-        toast.update("Connexion (" + provider + ")...");
-
-        try {
-            let url = this.config.paperReaderUrl + "/analyze/zotero-stream?" +
-                "zotero_key=" + encodeURIComponent(item.key) +
-                "&lecture_mode=" + encodeURIComponent(mode) +
-                "&provider=" + encodeURIComponent(provider) +
-                "&extract_figures=" + (extractFigures ? "true" : "false");
-
-            this.log("SSE Paper Reader: " + url + " (mode=" + mode + ")");
-
-            let self = this;
-            let finalResult = null;
-
-            // Use Zotero.HTTP.request with streaming callback
-            let lastIndex = 0;
-            await Zotero.HTTP.request("GET", url, {
-                headers: { "Accept": "text/event-stream" },
-                timeout: 900000, // 15 minutes
-                responseType: "text",
-                ignoreErrors: true,  // Ignore SSL certificate errors for self-signed certs
-                requestObserver: function(xhr) {
-                    xhr.onprogress = function() {
-                        let newData = xhr.responseText.substring(lastIndex);
-                        lastIndex = xhr.responseText.length;
-                        let lines = newData.split("\n");
-                        for (let line of lines) {
-                            if (line.startsWith("data: ")) {
-                                try {
-                                    let data = JSON.parse(line.substring(6));
-                                    self.log("SSE analyze: " + JSON.stringify(data));
-                                    toast.update(data.message || self.getAnalyzeStepText(data));
-                                    let evt = data.event || data.step;
-                                    if (data.done === true || evt === "termine" || evt === "complete") {
-                                        finalResult = { status: "success", data: data };
-                                    } else if (evt === "error" || evt === "erreur") {
-                                        finalResult = { status: "error", message: data.message || "Erreur inconnue" };
-                                    }
-                                } catch (e) {
-                                    self.log("SSE parse error: " + e);
-                                }
-                            }
-                        }
-                    };
-                }
-            });
-
-            toast.close();
-
-            if (!finalResult) {
-                this.showNotification("Erreur", "Pas de réponse du serveur");
-                return;
-            }
-
-            if (finalResult.status === "success") {
-                let ficheId = finalResult.data?.fiche_id || "";
-                let msg = title.substring(0, 40) + " - Fiche creee";
-                if (ficheId) msg += " (" + ficheId + ")";
-                this.showNotification("Lecture terminee!", msg);
-                // Reload item to show new tags (paper-reader-analyzed, #lecture)
-                await item.reload();
-                try { Zotero.Sync.Runner.sync(); } catch (e) {}
-            } else {
-                this.showNotification("Echec de la lecture", finalResult.message || "Erreur inconnue");
-            }
-        } catch (e) {
-            toast.close();
-            this.log("Paper Reader SSE error: " + e);
-            this.showNotification("Erreur", e.message || "Connexion échouée");
         }
     },
 
@@ -3153,9 +2866,9 @@ PdfCompanion = {
 
         try {
             let url = this.config.paperReaderUrl + "/synthesize/collection/" +
-                encodeURIComponent(collection.key) + "/prisma/stream?include_quotes=true";
+                encodeURIComponent(collection.key) + "/stream-v2";
 
-            this.log("POST PRISMA stream: " + url);
+            this.log("POST stream-v2: " + url);
 
             await new Promise((resolve, reject) => {
                 let xhr = new XMLHttpRequest();
@@ -3269,6 +2982,11 @@ PdfCompanion = {
 
     // === PRISMA SYNTHESIS V2 DIALOG ===
     async openPrismaDialog() {
+        // DEPRECATED: Redirect to unified dialog
+        this.log("openPrismaDialog is deprecated, using openUnifiedSynthesisDialog");
+        return this.openUnifiedSynthesisDialog();
+
+        // Old code below is no longer used (for reference only)
         let collection = this.getSelectedCollection();
         if (!collection) {
             this.showNotification("PDF Companion", "Selectionnez une collection");
@@ -3599,17 +3317,15 @@ PdfCompanion = {
         try {
             // Build URL with parameters
             let url = this.config.paperReaderUrl + "/synthesize/collection/" +
-                encodeURIComponent(collection.key) + "/prisma-v2/stream?" +
+                encodeURIComponent(collection.key) + "/stream-v2?" +
                 "lecture_mode=" + encodeURIComponent(lectureMode) +
-                "&lecture=" + (lecture ? "true" : "false") +
-                "&replace=" + (replace ? "true" : "false") +
-                "&provider=" + encodeURIComponent(provider);
+                "&lecture=" + (lecture ? "true" : "false");
 
             if (focus) {
                 url += "&focus=" + encodeURIComponent(focus);
             }
 
-            this.log("GET PRISMA-v2 stream: " + url);
+            this.log("GET stream-v2: " + url);
 
             await new Promise((resolve, reject) => {
                 let xhr = new XMLHttpRequest();
@@ -5040,6 +4756,11 @@ PdfCompanion = {
 
     // === BIBLIOGRAPHIC SYNTHESIS (Paper-Reader) ===
     async openSynthesisDialog() {
+        // DEPRECATED: Redirect to unified dialog
+        this.log("openSynthesisDialog is deprecated, using openUnifiedSynthesisDialog");
+        return this.openUnifiedSynthesisDialog();
+
+        // Old code below is no longer used (for reference only)
         let collection = this.getSelectedCollection();
         if (!collection) {
             this.showNotification("PDF Companion", "Selectionnez une collection");
@@ -5292,9 +5013,9 @@ PdfCompanion = {
 
     async runCollectionSynthesis(collection, level, provider) {
         let url = this.config.paperReaderUrl + "/synthesize/collection/" +
-            encodeURIComponent(collection.key) + "/stream?" +
-            "level=" + encodeURIComponent(level) +
-            "&provider=" + encodeURIComponent(provider);
+            encodeURIComponent(collection.key) + "/stream-v2?" +
+            "lecture_mode=" + encodeURIComponent(level) +
+            "&lecture=" + "true";
 
         this.log("SSE Synthesis URL: " + url);
 
@@ -5595,7 +5316,6 @@ PdfCompanion = {
         let url = this.config.paperReaderUrl + "/synthesize/collection/" +
                   encodeURIComponent(collection.key) + "/stream-v2?" +
                   "lecture=" + params.lecture +
-                  "&replace=" + params.replace +
                   "&lecture_mode=" + encodeURIComponent(params.lecture_mode);
 
         this.log("Synthèse v2: " + url);
@@ -5682,6 +5402,881 @@ PdfCompanion = {
 
             xhr.send();
         });
+    },
+
+    async openUnifiedSynthesisDialog() {
+        let collection = this.getSelectedCollection();
+        if (!collection) {
+            this.showNotification("PDF Companion", "Selectionnez une collection");
+            return;
+        }
+
+        let collectionName = collection.name;
+        let collectionKey = collection.key;
+        let self = this;
+
+        let html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Synthese de Collection</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #1e1e1e;
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: linear-gradient(135deg, #2d5a27 0%, #4a7c43 100%);
+            color: white;
+            padding: 18px 22px;
+            flex-shrink: 0;
+        }
+        .header h1 {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .header .subtitle {
+            font-size: 0.85em;
+            opacity: 0.9;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .form-container {
+            padding: 18px 22px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .form-group > label {
+            font-weight: 600;
+            font-size: 0.9em;
+            color: #b0b0b0;
+            margin-bottom: 4px;
+        }
+        .radio-group {
+            background: #2a2a2a;
+            border-radius: 6px;
+            padding: 8px 12px;
+        }
+        .radio-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 4px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .radio-item:hover {
+            background: #353535;
+        }
+        .radio-item input[type="radio"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #4a7c43;
+            cursor: pointer;
+        }
+        .radio-item label {
+            cursor: pointer;
+            font-size: 0.9em;
+            color: #e0e0e0;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: #2a2a2a;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .checkbox-group:hover {
+            background: #353535;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #4a7c43;
+            cursor: pointer;
+        }
+        .checkbox-label {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .checkbox-label span {
+            font-weight: 500;
+            color: #e0e0e0;
+            font-size: 0.95em;
+        }
+        .checkbox-label small {
+            color: #888;
+            font-size: 0.8em;
+        }
+        .text-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #444;
+            border-radius: 6px;
+            background: #2a2a2a;
+            color: #e0e0e0;
+            font-size: 0.95em;
+            resize: vertical;
+            min-height: 80px;
+        }
+        .text-input:focus {
+            outline: none;
+            border-color: #4a7c43;
+        }
+        .text-input::placeholder {
+            color: #666;
+        }
+        .hidden {
+            display: none;
+        }
+        .button-row {
+            display: flex;
+            gap: 10px;
+            padding: 16px 22px;
+            background: #252525;
+            border-top: 1px solid #333;
+            flex-shrink: 0;
+        }
+        .btn {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #2d5a27 0%, #4a7c43 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(74, 124, 67, 0.4);
+        }
+        .btn-secondary {
+            background: #3c3c3c;
+            color: #e0e0e0;
+            border: 1px solid #555;
+        }
+        .btn-secondary:hover {
+            background: #4a4a4a;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Synthese de Collection</h1>
+        <div class="subtitle" title="${this.escapeHtml(collectionName)}">${this.escapeHtml(collectionName.length > 50 ? collectionName.substring(0, 50) + "..." : collectionName)}</div>
+    </div>
+    <div class="form-container">
+        <div class="form-group">
+            <label>Type de synthese</label>
+            <div class="radio-group">
+                <div class="radio-item">
+                    <input type="radio" name="synthesisType" id="typeStandard" value="standard" checked>
+                    <label for="typeStandard">Standard - Synthese bibliographique</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="synthesisType" id="typePrisma" value="prisma">
+                    <label for="typePrisma">PRISMA - Revue systematique</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Mode de lecture</label>
+            <div class="radio-group">
+                <div class="radio-item">
+                    <input type="radio" name="lectureMode" id="modeStandard" value="standard" checked>
+                    <label for="modeStandard">Standard - Analyse rapide</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="lectureMode" id="modeFull" value="full">
+                    <label for="modeFull">Complete - Analyse approfondie</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="lectureMode" id="modeThesis" value="thesis">
+                    <label for="modeThesis">These - Qualite doctorale</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="lectureMode" id="modeFocus" value="focus">
+                    <label for="modeFocus">Focus - Sujet specifique</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group hidden" id="focusGroup">
+            <label>Sujet de focus</label>
+            <textarea class="text-input" id="focusText" placeholder="Ex: biomarqueurs, mecanismes, resistance..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Modele LLM</label>
+            <div class="radio-group">
+                <div class="radio-item">
+                    <input type="radio" name="llmProvider" id="providerClaude" value="claude_cli" checked>
+                    <label for="providerClaude">Claude (CLI)</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="llmProvider" id="providerSambanova" value="sambanova">
+                    <label for="providerSambanova">SambaNova</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="llmProvider" id="providerGroq" value="groq">
+                    <label for="providerGroq">Groq</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Options</label>
+            <label class="checkbox-group" for="analyzeNoFiche">
+                <input type="checkbox" id="analyzeNoFiche" checked>
+                <div class="checkbox-label">
+                    <span>Analyser articles sans fiche</span>
+                    <small>Re-generer les fiches manquantes</small>
+                </div>
+            </label>
+            <label class="checkbox-group" for="replaceExisting">
+                <input type="checkbox" id="replaceExisting">
+                <div class="checkbox-label">
+                    <span>Remplacer syntheses existantes</span>
+                    <small>Supprimer et regenerer les syntheses</small>
+                </div>
+            </label>
+        </div>
+    </div>
+    <div class="button-row">
+        <button class="btn btn-secondary" onclick="window.close()">Annuler</button>
+        <button class="btn btn-primary" onclick="startSynthesis()">Generer la synthese</button>
+    </div>
+    <script>
+        function getSelectedRadio(name) {
+            var radios = document.getElementsByName(name);
+            for (var i = 0; i < radios.length; i++) {
+                if (radios[i].checked) return radios[i].value;
+            }
+            return null;
+        }
+
+        function toggleFocusGroup() {
+            var mode = getSelectedRadio('lectureMode');
+            var focusGroup = document.getElementById('focusGroup');
+            if (mode === 'focus') {
+                focusGroup.classList.remove('hidden');
+                setTimeout(function() {
+                    document.getElementById('focusText').focus();
+                }, 50);
+            } else {
+                focusGroup.classList.add('hidden');
+            }
+        }
+
+        function startSynthesis() {
+            var synthesisType = getSelectedRadio('synthesisType') || 'standard';
+            var lectureMode = getSelectedRadio('lectureMode') || 'standard';
+            var llmProvider = getSelectedRadio('llmProvider') || 'claude_cli';
+            var analyzeNoFiche = document.getElementById('analyzeNoFiche').checked;
+            var replaceExisting = document.getElementById('replaceExisting').checked;
+            var focus = null;
+
+            if (lectureMode === 'focus') {
+                focus = document.getElementById('focusText').value.trim();
+                if (!focus) {
+                    alert('Veuillez entrer un sujet de focus');
+                    document.getElementById('focusText').focus();
+                    return;
+                }
+            }
+
+            if (window.pdfCompanionCallback) {
+                window.pdfCompanionCallback(synthesisType, lectureMode, llmProvider, analyzeNoFiche, replaceExisting, focus);
+            }
+            window.close();
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                startSynthesis();
+            } else if (e.key === 'Escape') {
+                window.close();
+            }
+        });
+
+        // Setup radio listeners for focus group visibility
+        var radios = document.getElementsByName('lectureMode');
+        for (var i = 0; i < radios.length; i++) {
+            radios[i].addEventListener('change', toggleFocusGroup);
+        }
+    </script>
+</body>
+</html>`;
+
+        try {
+            let win = Services.ww.openWindow(
+                null,
+                "about:blank",
+                "_blank",
+                "chrome,centerscreen,resizable=yes,width=500,height=750",
+                null
+            );
+
+            win.addEventListener("load", () => {
+                win.document.open();
+                win.document.write(html);
+                win.document.close();
+                win.document.title = "Synthese de Collection";
+
+                win.pdfCompanionCallback = async (synthesisType, lectureMode, llmProvider, analyzeNoFiche, replaceExisting, focus) => {
+                    self.log("Unified synthesis dialog: type=" + synthesisType + ", mode=" + lectureMode + ", focus=" + (focus || "null"));
+                    await self.runUnifiedSynthesis(collection, synthesisType, lectureMode, llmProvider, analyzeNoFiche, replaceExisting, focus);
+                };
+            }, { once: true });
+
+            this.log("Opened unified synthesis dialog for collection: " + collectionName);
+        } catch (e) {
+            this.log("openUnifiedSynthesisDialog error: " + e);
+            this.showNotification("Erreur", "Impossible d'ouvrir le dialogue");
+        }
+    },
+
+    async runUnifiedSynthesis(collection, synthesisType, lectureMode, llmProvider, analyzeNoFiche, replaceExisting, focus) {
+        let self = this;
+        let collectionName = collection.name;
+        let url = this.config.paperReaderUrl + "/synthesize/collection/" +
+                  encodeURIComponent(collection.key) + "/stream-v2?" +
+                  "lecture_mode=" + encodeURIComponent(lectureMode) +
+                  "&lecture=true" +
+                  "&provider=" + encodeURIComponent(llmProvider) +
+                  "&prisma=" + (synthesisType === "prisma" ? "true" : "false") +
+                  "&analyze_no_fiche=" + (analyzeNoFiche ? "true" : "false") +
+                  "&replace_synthesis=" + (replaceExisting ? "true" : "false");
+
+        if (focus) {
+            url += "&focus=" + encodeURIComponent(focus);
+        }
+
+        this.log("Unified synthesis: " + url);
+        let toast = this.Toast.progress("Synthese " + (synthesisType === "prisma" ? "PRISMA" : "Standard") + " - " + collectionName.substring(0, 30));
+
+        await new Promise((resolve, reject) => {
+            let xhr = new XMLHttpRequest();
+            let lastIndex = 0;
+
+            xhr.open("GET", url, true);
+            xhr.setRequestHeader("Accept", "text/event-stream");
+
+            xhr.onprogress = function() {
+                let newData = xhr.responseText.substring(lastIndex);
+                lastIndex = xhr.responseText.length;
+                let lines = newData.split("\n");
+
+                for (let line of lines) {
+                    if (!line.startsWith("data: ")) continue;
+                    try {
+                        let data = JSON.parse(line.substring(6));
+                        let phase = data.phase || "unknown";
+
+                        switch (phase) {
+                            case "init":
+                                toast.update("Initialisation...");
+                                break;
+                            case "pdf_check":
+                                toast.update("Verification PDFs: " + data.total_articles + " articles");
+                                break;
+                            case "article_check":
+                            case "article_valid":
+                                toast.update("PDF " + data.index + "/" + data.total);
+                                break;
+                            case "pdf_check_complete":
+                                toast.update("PDFs: " + data.valid + " valides, " + data.skipped + " skippes");
+                                break;
+                            case "fiche_check":
+                                toast.update("Verification fiches...");
+                                break;
+                            case "fiche_generation":
+                                toast.update("Analyse articles: " + data.total + " articles");
+                                break;
+                            case "lecture_start":
+                                toast.update("Analyse: " + (data.title || data.zotero_key || ""));
+                                break;
+                            case "lecture_progress":
+                                toast.update("Analyse: " + data.step + "...");
+                                break;
+                            case "fiche_generation_complete":
+                                toast.update("Fiches pretes: " + data.fiches_count);
+                                break;
+                            case "synthesis":
+                                toast.update("Synthese LLM...");
+                                break;
+                            case "storage":
+                                toast.update("Stockage...");
+                                break;
+                            case "complete":
+                                toast.success("Synthese completee!");
+                                self.log("Unified synthesis complete: " + JSON.stringify(data).substring(0, 200));
+                                break;
+                            case "error":
+                                toast.error("Erreur: " + (data.error || data.message || "Erreur inconnue"));
+                                self.log("Unified synthesis error: " + data.error);
+                                break;
+                        }
+                    } catch (e) {
+                        // Ignore parse errors
+                    }
+                }
+            };
+
+            xhr.onload = function() {
+                self.log("Unified synthesis complete: status " + xhr.status);
+                resolve();
+            };
+
+            xhr.onerror = function() {
+                self.log("Unified synthesis connection error");
+                toast.error("Erreur de connexion");
+                reject(new Error("Connexion echouee"));
+            };
+
+            try {
+                xhr.send();
+            } catch (e) {
+                self.log("Unified synthesis xhr.send error: " + e.message);
+                toast.error("Erreur: " + e.message);
+                reject(e);
+            }
+        });
+    },
+
+    async openDocumentExportDialog() {
+        let collection = this.getSelectedCollection();
+        if (!collection) {
+            this.showNotification("PDF Companion", "Selectionnez une collection");
+            return;
+        }
+
+        let collectionName = collection.name;
+        let collectionKey = collection.key;
+        let self = this;
+
+        let html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Export de Documents</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #1e1e1e;
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: linear-gradient(135deg, #c0504d 0%, #953735 100%);
+            color: white;
+            padding: 18px 22px;
+            flex-shrink: 0;
+        }
+        .header h1 {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .header .subtitle {
+            font-size: 0.85em;
+            opacity: 0.9;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .form-container {
+            padding: 18px 22px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .form-group > label {
+            font-weight: 600;
+            font-size: 0.9em;
+            color: #b0b0b0;
+            margin-bottom: 4px;
+        }
+        .radio-group {
+            background: #2a2a2a;
+            border-radius: 6px;
+            padding: 8px 12px;
+        }
+        .radio-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 4px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .radio-item:hover {
+            background: #353535;
+        }
+        .radio-item input[type="radio"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #c0504d;
+            cursor: pointer;
+        }
+        .radio-item label {
+            cursor: pointer;
+            font-size: 0.9em;
+            color: #e0e0e0;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: #2a2a2a;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .checkbox-group:hover {
+            background: #353535;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #c0504d;
+            cursor: pointer;
+        }
+        .checkbox-label {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .checkbox-label span {
+            font-weight: 500;
+            color: #e0e0e0;
+            font-size: 0.95em;
+        }
+        .checkbox-label small {
+            color: #888;
+            font-size: 0.8em;
+        }
+        .text-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #444;
+            border-radius: 6px;
+            background: #2a2a2a;
+            color: #e0e0e0;
+            font-size: 0.95em;
+        }
+        .text-input:focus {
+            outline: none;
+            border-color: #c0504d;
+        }
+        .text-input::placeholder {
+            color: #666;
+        }
+        .hidden {
+            display: none;
+        }
+        .button-row {
+            display: flex;
+            gap: 10px;
+            padding: 16px 22px;
+            background: #252525;
+            border-top: 1px solid #333;
+            flex-shrink: 0;
+        }
+        .btn {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #c0504d 0%, #953735 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(192, 80, 77, 0.4);
+        }
+        .btn-secondary {
+            background: #3c3c3c;
+            color: #e0e0e0;
+            border: 1px solid #555;
+        }
+        .btn-secondary:hover {
+            background: #4a4a4a;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Export de Documents</h1>
+        <div class="subtitle" title="${this.escapeHtml(collectionName)}">${this.escapeHtml(collectionName.length > 50 ? collectionName.substring(0, 50) + "..." : collectionName)}</div>
+    </div>
+    <div class="form-container">
+        <div class="form-group">
+            <label>Format de document</label>
+            <div class="radio-group">
+                <div class="radio-item">
+                    <input type="radio" name="documentFormat" id="formatWord" value="word" checked>
+                    <label for="formatWord">Word (.docx) - Document texte</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="documentFormat" id="formatPptx" value="pptx">
+                    <label for="formatPptx">PowerPoint (.pptx) - Presentation</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group" id="writingLevelGroup">
+            <label>Niveau de redaction</label>
+            <div class="radio-group">
+                <div class="radio-item">
+                    <input type="radio" name="writingLevel" id="levelPopular" value="vulgarization">
+                    <label for="levelPopular">Vulgarisation - Grand public</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="writingLevel" id="levelScientific" value="scientific" checked>
+                    <label for="levelScientific">Scientifique - Chercheurs</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="writingLevel" id="levelAcademic" value="academic">
+                    <label for="levelAcademic">Universitaire - Academique</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Titre du document</label>
+            <input type="text" class="text-input" id="docTitle" placeholder="Ex: Synthese bibliographique - [Collection]" value="Synthese - ${this.escapeHtml(collectionName)}">
+        </div>
+
+        <div class="form-group">
+            <label>Options</label>
+            <label class="checkbox-group" for="attachZotero">
+                <input type="checkbox" id="attachZotero" checked>
+                <div class="checkbox-label">
+                    <span>Attacher a Zotero</span>
+                    <small>Creer une piece jointe dans la collection</small>
+                </div>
+            </label>
+            <label class="checkbox-group" for="uploadDropbox">
+                <input type="checkbox" id="uploadDropbox" checked>
+                <div class="checkbox-label">
+                    <span>Uploader sur Dropbox</span>
+                    <small>Sauvegarder automatiquement</small>
+                </div>
+            </label>
+        </div>
+    </div>
+    <div class="button-row">
+        <button class="btn btn-secondary" onclick="window.close()">Annuler</button>
+        <button class="btn btn-primary" onclick="startExport()">Generer le document</button>
+    </div>
+    <script>
+        function getSelectedRadio(name) {
+            var radios = document.getElementsByName(name);
+            for (var i = 0; i < radios.length; i++) {
+                if (radios[i].checked) return radios[i].value;
+            }
+            return null;
+        }
+
+        function toggleWritingLevel() {
+            var format = getSelectedRadio('documentFormat');
+            var writingLevelGroup = document.getElementById('writingLevelGroup');
+            if (format === 'word') {
+                writingLevelGroup.classList.remove('hidden');
+            } else {
+                writingLevelGroup.classList.add('hidden');
+            }
+        }
+
+        function startExport() {
+            var format = getSelectedRadio('documentFormat') || 'word';
+            var writingLevel = getSelectedRadio('writingLevel') || 'scientific';
+            var title = document.getElementById('docTitle').value.trim();
+            var attachZotero = document.getElementById('attachZotero').checked;
+            var uploadDropbox = document.getElementById('uploadDropbox').checked;
+
+            if (!title) {
+                alert('Veuillez entrer un titre pour le document');
+                document.getElementById('docTitle').focus();
+                return;
+            }
+
+            if (window.pdfCompanionCallback) {
+                window.pdfCompanionCallback(format, writingLevel, title, attachZotero, uploadDropbox);
+            }
+            window.close();
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                startExport();
+            } else if (e.key === 'Escape') {
+                window.close();
+            }
+        });
+
+        // Setup radio listeners for writing level visibility
+        var radios = document.getElementsByName('documentFormat');
+        for (var i = 0; i < radios.length; i++) {
+            radios[i].addEventListener('change', toggleWritingLevel);
+        }
+    </script>
+</body>
+</html>`;
+
+        try {
+            let win = Services.ww.openWindow(
+                null,
+                "about:blank",
+                "_blank",
+                "chrome,centerscreen,resizable=yes,width=500,height=650",
+                null
+            );
+
+            win.addEventListener("load", () => {
+                win.document.open();
+                win.document.write(html);
+                win.document.close();
+                win.document.title = "Export de Documents";
+
+                win.pdfCompanionCallback = async (format, writingLevel, title, attachZotero, uploadDropbox) => {
+                    self.log("Document export dialog: format=" + format + ", level=" + writingLevel);
+                    if (format === "word") {
+                        await self.exportWordDocument(collection, writingLevel, title, attachZotero, uploadDropbox);
+                    } else {
+                        await self.exportPptxPresentation(collection, title, attachZotero, uploadDropbox);
+                    }
+                };
+            }, { once: true });
+
+            this.log("Opened document export dialog for collection: " + collectionName);
+        } catch (e) {
+            this.log("openDocumentExportDialog error: " + e);
+            this.showNotification("Erreur", "Impossible d'ouvrir le dialogue");
+        }
+    },
+
+    async exportWordDocument(collection, writingLevel, title, attachZotero, uploadDropbox) {
+        let self = this;
+        let toast = this.Toast.progress("Export Word - " + title.substring(0, 30));
+
+        try {
+            let url = this.config.paperReaderUrl + "/export/document";
+            let body = JSON.stringify({
+                source_type: "collection",
+                source_id: collection.key,
+                writing_level: writingLevel,
+                format: "docx",
+                title: title,
+                attach_to_zotero: attachZotero,
+                upload_to_dropbox: uploadDropbox
+            });
+
+            this.log("Word export request: " + url);
+
+            let response = await Zotero.HTTP.request("POST", url, {
+                headers: { "Content-Type": "application/json" },
+                body: body,
+                timeout: 300000,  // 5 minutes
+                ignoreErrors: true
+            });
+
+            toast.close();
+
+            if (response.status === 200 || response.status === 201) {
+                let data = JSON.parse(response.responseText);
+                this.showNotification("Export reussi!", title);
+                this.log("Word document exported: " + (data.file_path || "success"));
+            } else {
+                this.showNotification("Erreur d'export", "Statut: " + response.status);
+                this.log("Word export error: " + response.status);
+            }
+        } catch (e) {
+            toast.close();
+            this.log("Word export error: " + e.message);
+            this.showNotification("Erreur", "Export impossible: " + e.message);
+        }
+    },
+
+    async exportPptxPresentation(collection, title, attachZotero, uploadDropbox) {
+        let self = this;
+        let toast = this.Toast.progress("Export PowerPoint - " + title.substring(0, 30));
+
+        try {
+            // Use existing PPTX export logic
+            let url = "http://10.0.0.44:8480/api/generate/paper-reader";
+            let body = JSON.stringify({
+                zotero_collection_key: collection.key,
+                title: title,
+                attach_to_zotero: attachZotero,
+                upload_to_dropbox: uploadDropbox
+            });
+
+            this.log("PPTX export request: " + url);
+
+            let response = await Zotero.HTTP.request("POST", url, {
+                headers: { "Content-Type": "application/json" },
+                body: body,
+                timeout: 300000,  // 5 minutes
+                ignoreErrors: true
+            });
+
+            toast.close();
+
+            if (response.status === 200 || response.status === 201) {
+                let data = JSON.parse(response.responseText);
+                this.showNotification("Export reussi!", title);
+                this.log("PPTX presentation exported: " + (data.file_path || "success"));
+            } else {
+                this.showNotification("Erreur d'export", "Statut: " + response.status);
+                this.log("PPTX export error: " + response.status);
+            }
+        } catch (e) {
+            toast.close();
+            this.log("PPTX export error: " + e.message);
+            this.showNotification("Erreur", "Export impossible: " + e.message);
+        }
     },
 
     // === SYNTHESIZE COLLECTION (Markdown - ancien) ===
@@ -5787,9 +6382,10 @@ PdfCompanion = {
                 logDiv.style.display = 'block';
 
                 let sseUrl = self.config.paperReaderUrl + "/synthesize/collection/" +
-                    encodeURIComponent(collection.key) + "/focused/stream?" +
+                    encodeURIComponent(collection.key) + "/stream-v2?" +
                     "focus=" + encodeURIComponent(focus) +
-                    "&level=" + encodeURIComponent(level);
+                    "&lecture_mode=" + encodeURIComponent(level) +
+                    "&lecture=true";
 
                 self.log("SSE synthesis: " + sseUrl);
 
@@ -6294,7 +6890,7 @@ PdfCompanion = {
                     addSseEvent('start', 'Mode: avec sous-collections');
                 }
 
-                let url = self.config.paperReaderUrl + "/synthesize/collection/" + encodeURIComponent(collection.key) + "/stream";
+                let url = self.config.paperReaderUrl + "/synthesize/collection/" + encodeURIComponent(collection.key) + "/stream-v2";
                 self.log("Starting collection synthesis: " + url);
 
                 try {
@@ -6320,7 +6916,7 @@ PdfCompanion = {
                 }
 
                 // Use the synthesis collection stream endpoint
-                let sseUrl = self.config.paperReaderUrl + "/synthesize/collection/" + encodeURIComponent(collection.key) + "/stream";
+                let sseUrl = self.config.paperReaderUrl + "/synthesize/collection/" + encodeURIComponent(collection.key) + "/stream-v2";
 
                 self.log("Connecting to SSE: " + sseUrl);
                 addSseEvent('progress', 'Connexion au stream SSE...');

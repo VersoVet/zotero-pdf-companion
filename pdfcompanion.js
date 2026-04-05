@@ -5876,7 +5876,7 @@ PdfCompanion = {
                   "&provider=" + encodeURIComponent(llmProvider) +
                   "&replace=" + (replaceExisting ? "true" : "false");
 
-        // Prepare body for focus parameter (if provided)
+        // Prepare body with focus (and other optional params)
         let requestBody = null;
         if (focus) {
             requestBody = JSON.stringify({ focus: focus });

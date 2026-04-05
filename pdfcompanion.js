@@ -493,6 +493,13 @@ PdfCompanion = {
             synthesisItem.addEventListener('command', () => this.openUnifiedSynthesisDialog());
             menupopup.appendChild(synthesisItem);
 
+            // Menu item "Synthese focalisee..." - focused synthesis dialog
+            let focusedSynthesisItem = doc.createXULElement('menuitem');
+            focusedSynthesisItem.id = 'pdfcompanion-collection-focused-synthesis';
+            focusedSynthesisItem.setAttribute('label', 'Synthese focalisee...');
+            focusedSynthesisItem.addEventListener('command', () => this.openFocusedSynthesisDialog());
+            menupopup.appendChild(focusedSynthesisItem);
+
             // Menu item "Creer documents..." - document export dialog
             let exportItem = doc.createXULElement('menuitem');
             exportItem.id = 'pdfcompanion-collection-export';
@@ -6011,6 +6018,479 @@ PdfCompanion = {
                 xhr.send(requestBody);
             } catch (e) {
                 self.log("Unified synthesis xhr.send error: " + e.message);
+                toast.error("Erreur: " + e.message);
+                reject(e);
+            }
+        });
+    },
+
+    async openFocusedSynthesisDialog() {
+        let collection = this.getSelectedCollection();
+        if (!collection) {
+            this.showNotification("PDF Companion", "Selectionnez une collection");
+            return;
+        }
+
+        let collectionName = collection.name;
+        let collectionKey = collection.key;
+        let self = this;
+
+        let html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Synthese Focalisee</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #1e1e1e;
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 18px 22px;
+            flex-shrink: 0;
+        }
+        .header h1 {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .header .subtitle {
+            font-size: 0.85em;
+            opacity: 0.9;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .form-container {
+            padding: 18px 22px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .form-group > label {
+            font-weight: 600;
+            font-size: 0.9em;
+            color: #b0b0b0;
+            margin-bottom: 4px;
+        }
+        .required::after {
+            content: " *";
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+        .radio-group {
+            background: #2a2a2a;
+            border-radius: 6px;
+            padding: 8px 12px;
+        }
+        .radio-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 4px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .radio-item:hover {
+            background: #353535;
+        }
+        .radio-item input[type="radio"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #667eea;
+            cursor: pointer;
+        }
+        .radio-item label {
+            cursor: pointer;
+            font-size: 0.9em;
+            color: #e0e0e0;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: #2a2a2a;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .checkbox-group:hover {
+            background: #353535;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #667eea;
+            cursor: pointer;
+        }
+        .checkbox-label {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .checkbox-label span {
+            font-weight: 500;
+            color: #e0e0e0;
+            font-size: 0.95em;
+        }
+        .checkbox-label small {
+            color: #888;
+            font-size: 0.8em;
+        }
+        .text-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #444;
+            border-radius: 6px;
+            background: #2a2a2a;
+            color: #e0e0e0;
+            font-size: 0.95em;
+            resize: vertical;
+            min-height: 100px;
+        }
+        .text-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .text-input::placeholder {
+            color: #666;
+        }
+        .help-text {
+            font-size: 0.8em;
+            color: #888;
+            margin-top: 4px;
+        }
+        .button-row {
+            display: flex;
+            gap: 10px;
+            padding: 16px 22px;
+            background: #252525;
+            border-top: 1px solid #333;
+            flex-shrink: 0;
+        }
+        .btn {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-secondary {
+            background: #3c3c3c;
+            color: #e0e0e0;
+            border: 1px solid #555;
+        }
+        .btn-secondary:hover {
+            background: #4a4a4a;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Synthese Focalisee de Collection</h1>
+        <div class="subtitle" title="${this.escapeHtml(collectionName)}">${this.escapeHtml(collectionName.length > 50 ? collectionName.substring(0, 50) + "..." : collectionName)}</div>
+    </div>
+    <div class="form-container">
+        <div class="form-group">
+            <label class="required">Sujet de focus</label>
+            <textarea class="text-input" id="focusText" placeholder="Ex: efficacité clinique du zoledronate, effets secondaires des bisphosphonates, mécanismes d'action..."></textarea>
+            <div class="help-text">Décrivez le thème ou l'aspect spécifique que vous voulez analyser</div>
+        </div>
+
+        <div class="form-group">
+            <label>Mode de lecture</label>
+            <div class="radio-group">
+                <div class="radio-item">
+                    <input type="radio" name="lectureMode" id="modeStandard" value="standard" checked>
+                    <label for="modeStandard">Standard - 4-6 keypoints</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="lectureMode" id="modeFull" value="full">
+                    <label for="modeFull">Full - 6-10 keypoints, détaillé</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="lectureMode" id="modeSection" value="section">
+                    <label for="modeSection">Section - Par sections GROBID</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="lectureMode" id="modeThesis" value="thesis">
+                    <label for="modeThesis">Thesis - 10-15 keypoints, doctorale</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Modele LLM</label>
+            <div class="radio-group">
+                <div class="radio-item">
+                    <input type="radio" name="llmProvider" id="providerClaude" value="claude_cli" checked>
+                    <label for="providerClaude">Claude (CLI)</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="llmProvider" id="providerSambanova" value="sambanova">
+                    <label for="providerSambanova">SambaNova</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" name="llmProvider" id="providerGroq" value="groq">
+                    <label for="providerGroq">Groq</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Options</label>
+            <label class="checkbox-group" for="includeSubcollections">
+                <input type="checkbox" id="includeSubcollections" checked>
+                <div class="checkbox-label">
+                    <span>Inclure sous-collections</span>
+                    <small>Analyser aussi les collections imbriquées</small>
+                </div>
+            </label>
+            <label class="checkbox-group" for="analyzeNoFiche">
+                <input type="checkbox" id="analyzeNoFiche" checked>
+                <div class="checkbox-label">
+                    <span>Analyser articles sans fiche</span>
+                    <small>Générer les fiches manquantes</small>
+                </div>
+            </label>
+        </div>
+    </div>
+    <div class="button-row">
+        <button class="btn btn-secondary" onclick="window.close()">Annuler</button>
+        <button class="btn btn-primary" id="startBtn" onclick="startFocusedSynthesis()">Generer la synthese focalisee</button>
+    </div>
+    <script>
+        function getSelectedRadio(name) {
+            var radios = document.getElementsByName(name);
+            for (var i = 0; i < radios.length; i++) {
+                if (radios[i].checked) return radios[i].value;
+            }
+            return null;
+        }
+
+        function validateAndStart() {
+            var focus = document.getElementById('focusText').value.trim();
+            if (!focus) {
+                alert('Veuillez entrer un sujet de focus');
+                return false;
+            }
+            return true;
+        }
+
+        function startFocusedSynthesis() {
+            if (!validateAndStart()) return;
+
+            var focus = document.getElementById('focusText').value.trim();
+            var lectureMode = getSelectedRadio('lectureMode') || 'standard';
+            var llmProvider = getSelectedRadio('llmProvider') || 'claude_cli';
+            var includeSubcollections = document.getElementById('includeSubcollections').checked;
+            var analyzeNoFiche = document.getElementById('analyzeNoFiche').checked;
+
+            if (window.pdfCompanionCallback) {
+                window.pdfCompanionCallback(focus, lectureMode, llmProvider, includeSubcollections, analyzeNoFiche);
+            }
+            window.close();
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                startFocusedSynthesis();
+            } else if (e.key === 'Escape') {
+                window.close();
+            }
+        });
+    </script>
+</body>
+</html>`;
+
+        try {
+            let win = Services.ww.openWindow(
+                null,
+                "about:blank",
+                "_blank",
+                "chrome,centerscreen,resizable=yes,width=500,height=750",
+                null
+            );
+
+            win.addEventListener("load", () => {
+                win.document.open();
+                win.document.write(html);
+                win.document.close();
+                win.document.title = "Synthese Focalisee";
+
+                win.pdfCompanionCallback = async (focus, lectureMode, llmProvider, includeSubcollections, analyzeNoFiche) => {
+                    self.log("Focused synthesis dialog: focus=" + focus + ", mode=" + lectureMode + ", lecture=" + analyzeNoFiche + ", subcollections=" + includeSubcollections);
+                    await self.runFocusedSynthesis(collection, focus, lectureMode, llmProvider, includeSubcollections, analyzeNoFiche);
+                };
+            }, { once: true });
+
+            this.log("Opened focused synthesis dialog for collection: " + collectionName);
+        } catch (e) {
+            this.log("openFocusedSynthesisDialog error: " + e);
+            this.showNotification("Erreur", "Impossible d'ouvrir le dialogue");
+        }
+    },
+
+    async runFocusedSynthesis(collection, focus, lectureMode, llmProvider, includeSubcollections, analyzeNoFiche) {
+        let self = this;
+        let collectionName = collection.name;
+
+        // Build URL with focus as query parameter
+        let url = this.config.paperReaderUrl + "/synthesize/collection/" +
+                  encodeURIComponent(collection.key) + "/stream-v2?" +
+                  "focus=" + encodeURIComponent(focus) +
+                  "&lecture_mode=" + encodeURIComponent(lectureMode) +
+                  "&lecture=" + (analyzeNoFiche ? "true" : "false") +
+                  "&provider=" + encodeURIComponent(llmProvider) +
+                  "&include_subcollections=" + (includeSubcollections ? "true" : "false");
+
+        this.log("Focused synthesis: " + url);
+        let toast = this.Toast.progress("Synthese focalisee - " + collectionName.substring(0, 30) + " (focus: " + focus.substring(0, 25) + "...)");
+
+        await new Promise((resolve, reject) => {
+            let xhr = new XMLHttpRequest();
+            let lastIndex = 0;
+
+            xhr.open("GET", url, true);
+            xhr.setRequestHeader("Accept", "text/event-stream");
+
+            xhr.onprogress = function() {
+                let newData = xhr.responseText.substring(lastIndex);
+                lastIndex = xhr.responseText.length;
+                let lines = newData.split("\n");
+
+                for (let line of lines) {
+                    if (!line.startsWith("data: ")) continue;
+                    try {
+                        let data = JSON.parse(line.substring(6));
+                        let event = data.event || data.phase || "unknown";
+                        let message = data.message || "";
+
+                        self.log("SSE Event (focused): " + event + " - " + message);
+
+                        switch (event) {
+                            case "workflow_start":
+                                toast.update("Démarrage workflow...");
+                                break;
+                            case "pdf_check_start":
+                                toast.update("Vérification des PDFs...");
+                                break;
+                            case "pdf_check_progress":
+                                toast.update("PDF " + (data.current || data.index || 0) + "/" + (data.total || "?"));
+                                break;
+                            case "pdf_check_complete":
+                                toast.update("PDFs: " + (data.valid || 0) + " valides, " + (data.skipped || 0) + " skippés");
+                                break;
+                            case "fiche_check_start":
+                                toast.update("Vérification des fiches...");
+                                break;
+                            case "fiche_check_progress":
+                                toast.update("Fiches: " + (data.current || 0) + "/" + (data.total || "?"));
+                                break;
+                            case "fiche_check_complete":
+                                toast.update("Fiches: " + (data.available || 0) + " disponibles, " + (data.missing || 0) + " manquantes");
+                                break;
+                            case "analysis_start":
+                                toast.update("Début de l'analyse focalisée...");
+                                break;
+                            case "analysis_article_start":
+                                toast.update("Analyse: " + (data.title || data.key || "article"));
+                                break;
+                            case "analysis_article_complete":
+                                toast.update("Analysé (" + (data.current || 0) + "/" + (data.total || 0) + ")");
+                                break;
+                            case "analysis_complete":
+                                toast.update("Analyses focalisées terminées!");
+                                break;
+                            case "synthesis_start":
+                                toast.update("Synthèse focalisée: chargement des fiches...");
+                                break;
+                            case "synthesis_loading_fiches":
+                                toast.update("Synthèse focalisée: chargement des fiches...");
+                                break;
+                            case "synthesis_generating":
+                                toast.update("Synthèse focalisée: génération en cours...");
+                                break;
+                            case "synthesis_complete":
+                                toast.update("Synthèse focalisée générée!");
+                                break;
+                            case "storage_start":
+                                toast.update("Stockage...");
+                                break;
+                            case "storage_dropbox_upload":
+                                toast.update("Upload Dropbox...");
+                                break;
+                            case "storage_zotero_attach":
+                                toast.update("Attachement Zotero...");
+                                break;
+                            case "storage_complete":
+                                toast.update("Stockage terminé!");
+                                break;
+                            case "workflow_complete":
+                                toast.success("Synthèse focalisée complétée!");
+                                self.log("Focused workflow terminé: " + JSON.stringify(data).substring(0, 200));
+                                break;
+                            case "workflow_error":
+                                toast.error("Erreur: " + message);
+                                self.log("Erreur focused workflow: " + message);
+                                break;
+                            default:
+                                if (message) {
+                                    toast.update(message);
+                                }
+                                break;
+                        }
+                    } catch (e) {
+                        self.log("Parse error: " + e.message);
+                    }
+                }
+            };
+
+            xhr.onload = function() {
+                self.log("Focused synthesis complete: status " + xhr.status);
+                resolve();
+            };
+
+            xhr.onerror = function() {
+                self.log("Focused synthesis connection error");
+                toast.error("Erreur de connexion");
+                reject(new Error("Connexion echouee"));
+            };
+
+            try {
+                xhr.send(null);
+            } catch (e) {
+                self.log("Focused synthesis xhr.send error: " + e.message);
                 toast.error("Erreur: " + e.message);
                 reject(e);
             }

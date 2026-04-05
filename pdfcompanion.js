@@ -598,7 +598,7 @@ PdfCompanion = {
 
     // === FETCH PDF ===
     fetchPdfForSelected() {
-        let items = Zotero.getActiveZoteroPane().getSelectedItems();
+        let items = this.getSelectedItems();
         if (!items || items.length === 0) {
             this.showNotification("PDF Companion", "No items selected");
             return;
@@ -721,7 +721,7 @@ PdfCompanion = {
 
     // === ATTACH LOCAL PDF ===
     async attachLocalPdfForSelected() {
-        let items = Zotero.getActiveZoteroPane().getSelectedItems();
+        let items = this.getSelectedItems();
         if (!items || items.length === 0) {
             this.showNotification("PDF Companion", "No items selected");
             return;
@@ -802,7 +802,7 @@ PdfCompanion = {
 
     // === REPLACE PDF ===
     async replacePdfForSelected() {
-        let items = Zotero.getActiveZoteroPane().getSelectedItems();
+        let items = this.getSelectedItems();
         if (!items || items.length === 0) {
             this.showNotification("PDF Companion", "No items selected");
             return;
@@ -953,7 +953,7 @@ PdfCompanion = {
 
     // === ENRICH METADATA ===
     async enrichMetadataForSelected() {
-        let items = Zotero.getActiveZoteroPane().getSelectedItems();
+        let items = this.getSelectedItems();
         if (!items || items.length === 0) {
             this.showNotification("PDF Companion", "No items selected");
             return;
@@ -1441,7 +1441,7 @@ PdfCompanion = {
     },
 
     async openUnifiedLectureDialog() {
-        let items = Zotero.getActiveZoteroPane().getSelectedItems();
+        let items = this.getSelectedItems();
         if (!items || items.length === 0) {
             this.showNotification("PDF Companion", "Aucun item selectionne");
             return;
@@ -2067,14 +2067,7 @@ PdfCompanion = {
     },
 
     copyItemId() {
-        // Try to get active pane, fallback to main window's ZoteroPane
-        let zp = Zotero.getActiveZoteroPane() || Zotero.getMainWindow().ZoteroPane;
-        if (!zp) {
-            this.showNotification("PDF Companion", "Unable to access Zotero");
-            return;
-        }
-
-        let items = zp.getSelectedItems && zp.getSelectedItems();
+        let items = this.getSelectedItems();
         if (!items || items.length === 0) {
             this.showNotification("PDF Companion", "No item selected");
             return;
@@ -2097,7 +2090,7 @@ PdfCompanion = {
     },
 
     async showFormattedNotes() {
-        let items = Zotero.getActiveZoteroPane().getSelectedItems();
+        let items = this.getSelectedItems();
         if (!items || items.length === 0) {
             this.showNotification("PDF Companion", "No item selected");
             return;
@@ -2377,7 +2370,16 @@ PdfCompanion = {
         } catch (e) {}
     },
 
-    // === COLLECTION METHODS ===
+    // === ITEM/COLLECTION METHODS ===
+    getSelectedItems() {
+        // Try to get active pane, fallback to main window's ZoteroPane
+        let zp = Zotero.getActiveZoteroPane() || Zotero.getMainWindow().ZoteroPane;
+        if (!zp || !zp.getSelectedItems) {
+            return [];
+        }
+        return zp.getSelectedItems() || [];
+    },
+
     getSelectedCollection() {
         let zp = Zotero.getActiveZoteroPane();
         let row = zp.collectionsView.selection.focused;
@@ -3681,7 +3683,7 @@ PdfCompanion = {
 
     // === READING CARDS (FICHES DE LECTURE) ===
     async showReadingCards() {
-        let items = Zotero.getActiveZoteroPane().getSelectedItems();
+        let items = this.getSelectedItems();
         if (!items || items.length === 0) {
             this.showNotification("PDF Companion", "Aucun item selectionne");
             return;
@@ -4028,7 +4030,7 @@ PdfCompanion = {
 
     // === FIGURES EXTRACTION & DISPLAY ===
     async extractFiguresForSelected() {
-        let items = Zotero.getActiveZoteroPane().getSelectedItems();
+        let items = this.getSelectedItems();
         if (!items || items.length === 0) {
             this.showNotification("PDF Companion", "Aucun item selectionne");
             return;
@@ -4343,7 +4345,7 @@ PdfCompanion = {
     },
 
     async showFigures() {
-        let items = Zotero.getActiveZoteroPane().getSelectedItems();
+        let items = this.getSelectedItems();
         if (!items || items.length === 0) {
             this.showNotification("PDF Companion", "Aucun item selectionne");
             return;

@@ -6289,25 +6289,12 @@ PdfCompanion = {
         </div>
 
         <div class="form-group">
-            <label>Mode de lecture</label>
-            <div class="radio-group">
-                <div class="radio-item">
-                    <input type="radio" name="lectureMode" id="modeStandard" value="standard" checked>
-                    <label for="modeStandard">Standard - 4-6 keypoints</label>
-                </div>
-                <div class="radio-item">
-                    <input type="radio" name="lectureMode" id="modeFull" value="full">
-                    <label for="modeFull">Full - 6-10 keypoints, détaillé</label>
-                </div>
-                <div class="radio-item">
-                    <input type="radio" name="lectureMode" id="modeSection" value="section">
-                    <label for="modeSection">Section - Par sections GROBID</label>
-                </div>
-                <div class="radio-item">
-                    <input type="radio" name="lectureMode" id="modeThesis" value="thesis">
-                    <label for="modeThesis">Thesis - 10-15 keypoints, doctorale</label>
-                </div>
+            <label>Seuil de pertinence</label>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <input type="range" id="relevanceThreshold" min="0" max="1" step="0.05" value="0.5" style="flex: 1; cursor: pointer;">
+                <span id="thresholdValue" style="min-width: 40px; text-align: right; font-weight: 600; color: #667eea;">0.50</span>
             </div>
+            <div class="help-text">Plus élevé = seulement articles très pertinents (0.5-0.8 recommandé)</div>
         </div>
 
         <div class="form-group">
@@ -6337,11 +6324,11 @@ PdfCompanion = {
                     <small>Analyser aussi les collections imbriquées</small>
                 </div>
             </label>
-            <label class="checkbox-group" for="analyzeNoFiche">
-                <input type="checkbox" id="analyzeNoFiche" checked>
+            <label class="checkbox-group" for="saveToDropbox">
+                <input type="checkbox" id="saveToDropbox" checked>
                 <div class="checkbox-label">
-                    <span>Analyser articles sans fiche</span>
-                    <small>Générer les fiches manquantes</small>
+                    <span>Sauvegarder sur Dropbox</span>
+                    <small>Automatiquement sauvegarder le résultat</small>
                 </div>
             </label>
         </div>
@@ -6372,16 +6359,21 @@ PdfCompanion = {
             if (!validateAndStart()) return;
 
             var focus = document.getElementById('focusText').value.trim();
-            var lectureMode = getSelectedRadio('lectureMode') || 'standard';
             var llmProvider = getSelectedRadio('llmProvider') || 'claude_cli';
             var includeSubcollections = document.getElementById('includeSubcollections').checked;
-            var analyzeNoFiche = document.getElementById('analyzeNoFiche').checked;
+            var relevanceThreshold = parseFloat(document.getElementById('relevanceThreshold').value);
+            var saveToDropbox = document.getElementById('saveToDropbox').checked;
 
             if (window.pdfCompanionCallback) {
-                window.pdfCompanionCallback(focus, lectureMode, llmProvider, includeSubcollections, analyzeNoFiche);
+                window.pdfCompanionCallback(focus, llmProvider, includeSubcollections, relevanceThreshold, saveToDropbox);
             }
             window.close();
         }
+
+        // Update threshold display value
+        document.getElementById('relevanceThreshold').addEventListener('input', function(e) {
+            document.getElementById('thresholdValue').textContent = parseFloat(e.target.value).toFixed(2);
+        });
 
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && e.ctrlKey) {
@@ -6409,9 +6401,9 @@ PdfCompanion = {
                 win.document.close();
                 win.document.title = "Synthese Focalisee";
 
-                win.pdfCompanionCallback = async (focus, lectureMode, llmProvider, includeSubcollections, analyzeNoFiche) => {
-                    self.log("Focused synthesis dialog: focus=" + focus + ", mode=" + lectureMode + ", lecture=" + analyzeNoFiche + ", subcollections=" + includeSubcollections);
-                    await self.runFocusedSynthesis(collection, focus, lectureMode, llmProvider, includeSubcollections, analyzeNoFiche);
+                win.pdfCompanionCallback = async (focus, llmProvider, includeSubcollections, relevanceThreshold, saveToDropbox) => {
+                    self.log("Focused synthesis dialog: focus=" + focus + ", provider=" + llmProvider + ", threshold=" + relevanceThreshold + ", dropbox=" + saveToDropbox);
+                    await self.runFocusedSynthesis(collection, focus, llmProvider, includeSubcollections, relevanceThreshold, saveToDropbox);
                 };
             }, { once: true });
 
@@ -6422,21 +6414,21 @@ PdfCompanion = {
         }
     },
 
-    async runFocusedSynthesis(collection, focus, lectureMode, llmProvider, includeSubcollections, analyzeNoFiche) {
+    async runFocusedSynthesis(collection, focus, llmProvider, includeSubcollections, relevanceThreshold, saveToDropbox) {
         let self = this;
         let collectionName = collection.name;
 
-        // Build URL with focus as query parameter
+        // Build URL for focused-deep endpoint
         let url = this.config.paperReaderUrl + "/synthesize/collection/" +
-                  encodeURIComponent(collection.key) + "/stream-v2?" +
+                  encodeURIComponent(collection.key) + "/focused-deep/stream?" +
                   "focus=" + encodeURIComponent(focus) +
-                  "&lecture_mode=" + encodeURIComponent(lectureMode) +
-                  "&lecture=" + (analyzeNoFiche ? "true" : "false") +
                   "&provider=" + encodeURIComponent(llmProvider) +
-                  "&include_subcollections=" + (includeSubcollections ? "true" : "false");
+                  "&include_subcollections=" + (includeSubcollections ? "true" : "false") +
+                  "&relevance_threshold=" + encodeURIComponent(relevanceThreshold) +
+                  "&save_to_dropbox=" + (saveToDropbox ? "true" : "false");
 
-        this.log("Focused synthesis: " + url);
-        let toast = this.Toast.progress("Synthese focalisee - " + collectionName.substring(0, 30) + " (focus: " + focus.substring(0, 25) + "...)");
+        this.log("Focused-deep synthesis: " + url);
+        let toast = this.Toast.progress("Synthese focalisee profonde - " + collectionName.substring(0, 30) + " (focus: " + focus.substring(0, 25) + "...)");
 
         await new Promise((resolve, reject) => {
             let xhr = new XMLHttpRequest();
@@ -6461,69 +6453,33 @@ PdfCompanion = {
 
                         switch (event) {
                             case "workflow_start":
-                                toast.update("Démarrage workflow...");
+                                toast.update("Démarrage du workflow de synthèse profonde...");
                                 break;
-                            case "pdf_check_start":
-                                toast.update("Vérification des PDFs...");
+                            case "fetch_articles_complete":
+                                toast.update("Articles récupérés: " + (data.total_articles || "?"));
                                 break;
-                            case "pdf_check_progress":
-                                toast.update("PDF " + (data.current || data.index || 0) + "/" + (data.total || "?"));
+                            case "relevance_filtering_complete":
+                                toast.update("Filtrage pertinence: " + (data.relevant || 0) + " pertinents, " + (data.irrelevant || 0) + " non-pertinents");
                                 break;
-                            case "pdf_check_complete":
-                                toast.update("PDFs: " + (data.valid || 0) + " valides, " + (data.skipped || 0) + " skippés");
+                            case "focused_extraction_progress":
+                                toast.update("Extraction focalisée: " + (data.current || 0) + "/" + (data.total || "?"));
                                 break;
-                            case "fiche_check_start":
-                                toast.update("Vérification des fiches...");
-                                break;
-                            case "fiche_check_progress":
-                                toast.update("Fiches: " + (data.current || 0) + "/" + (data.total || "?"));
-                                break;
-                            case "fiche_check_complete":
-                                toast.update("Fiches: " + (data.available || 0) + " disponibles, " + (data.missing || 0) + " manquantes");
-                                break;
-                            case "analysis_start":
-                                toast.update("Début de l'analyse focalisée...");
-                                break;
-                            case "analysis_article_start":
-                                toast.update("Analyse: " + (data.title || data.key || "article"));
-                                break;
-                            case "analysis_article_complete":
-                                toast.update("Analysé (" + (data.current || 0) + "/" + (data.total || 0) + ")");
-                                break;
-                            case "analysis_complete":
-                                toast.update("Analyses focalisées terminées!");
+                            case "focused_extraction_complete":
+                                toast.update("Extraction focalisée terminée!");
                                 break;
                             case "synthesis_start":
-                                toast.update("Synthèse focalisée: chargement des fiches...");
-                                break;
-                            case "synthesis_loading_fiches":
-                                toast.update("Synthèse focalisée: chargement des fiches...");
-                                break;
-                            case "synthesis_generating":
                                 toast.update("Synthèse focalisée: génération en cours...");
                                 break;
                             case "synthesis_complete":
                                 toast.update("Synthèse focalisée générée!");
                                 break;
-                            case "storage_start":
-                                toast.update("Stockage...");
-                                break;
-                            case "storage_dropbox_upload":
-                                toast.update("Upload Dropbox...");
-                                break;
-                            case "storage_zotero_attach":
-                                toast.update("Attachement Zotero...");
-                                break;
-                            case "storage_complete":
-                                toast.update("Stockage terminé!");
-                                break;
                             case "workflow_complete":
-                                toast.success("Synthèse focalisée complétée!");
-                                self.log("Focused workflow terminé: " + JSON.stringify(data).substring(0, 200));
+                                toast.success("Synthèse focalisée profonde complétée!");
+                                self.log("Focused-deep workflow terminé: " + JSON.stringify(data).substring(0, 200));
                                 break;
                             case "workflow_error":
                                 toast.error("Erreur: " + message);
-                                self.log("Erreur focused workflow: " + message);
+                                self.log("Erreur focused-deep workflow: " + message);
                                 break;
                             default:
                                 if (message) {

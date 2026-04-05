@@ -6213,15 +6213,15 @@ PdfCompanion = {
             <label>Niveau de redaction</label>
             <div class="radio-group">
                 <div class="radio-item">
-                    <input type="radio" name="writingLevel" id="levelPopular" value="vulgarization">
+                    <input type="radio" name="writingLevel" id="levelPopular" value="vulgarisation">
                     <label for="levelPopular">Vulgarisation - Grand public</label>
                 </div>
                 <div class="radio-item">
-                    <input type="radio" name="writingLevel" id="levelScientific" value="scientific" checked>
+                    <input type="radio" name="writingLevel" id="levelScientific" value="scientifique" checked>
                     <label for="levelScientific">Scientifique - Chercheurs</label>
                 </div>
                 <div class="radio-item">
-                    <input type="radio" name="writingLevel" id="levelAcademic" value="academic">
+                    <input type="radio" name="writingLevel" id="levelAcademic" value="universitaire">
                     <label for="levelAcademic">Universitaire - Academique</label>
                 </div>
             </div>
@@ -6348,16 +6348,15 @@ PdfCompanion = {
         try {
             let url = this.config.paperReaderUrl + "/export/document";
             let body = JSON.stringify({
-                source_type: "collection",
+                source_type: "synthesis",
                 source_id: collection.key,
                 writing_level: writingLevel,
                 format: "docx",
-                title: title,
-                attach_to_zotero: attachZotero,
-                upload_to_dropbox: uploadDropbox
+                language: "fr",
+                attach_to_zotero: attachZotero
             });
 
-            this.log("Word export request: " + url);
+            this.log("Word export request: " + url + " - " + JSON.stringify({ source_type: "synthesis", source_id: collection.key, writing_level: writingLevel, attach_to_zotero: attachZotero }));
 
             let response = await Zotero.HTTP.request("POST", url, {
                 headers: { "Content-Type": "application/json" },
@@ -6370,11 +6369,25 @@ PdfCompanion = {
 
             if (response.status === 200 || response.status === 201) {
                 let data = JSON.parse(response.responseText);
-                this.showNotification("Export reussi!", title);
-                this.log("Word document exported: " + (data.file_path || "success"));
+                let message = "Document exported";
+                if (data.filename) {
+                    message += "\n" + data.filename;
+                }
+                if (data.dropbox_url) {
+                    this.log("Dropbox URL: " + data.dropbox_url);
+                }
+                this.showNotification("Export reussi!", message);
+                this.log("Word document exported: " + JSON.stringify(data).substring(0, 200));
             } else {
-                this.showNotification("Erreur d'export", "Statut: " + response.status);
-                this.log("Word export error: " + response.status);
+                let errorMsg = "Statut: " + response.status;
+                try {
+                    let errData = JSON.parse(response.responseText);
+                    if (errData.detail || errData.message) {
+                        errorMsg = errData.detail || errData.message;
+                    }
+                } catch (e) {}
+                this.showNotification("Erreur d'export", errorMsg);
+                this.log("Word export error: " + response.status + " - " + response.responseText.substring(0, 200));
             }
         } catch (e) {
             toast.close();

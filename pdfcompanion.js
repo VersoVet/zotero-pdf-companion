@@ -5876,7 +5876,12 @@ PdfCompanion = {
                   "&provider=" + encodeURIComponent(llmProvider) +
                   "&replace=" + (replaceExisting ? "true" : "false");
 
-        // Prepare body with focus (and other optional params)
+        // Add focus as query parameter (API.md specifies it as query param)
+        if (focus) {
+            url += "&focus=" + encodeURIComponent(focus);
+        }
+
+        // Prepare body with optional params (ENDPOINT_SYNTHESIS.md specifies focus in body too)
         let requestBody = null;
         if (focus) {
             requestBody = JSON.stringify({ focus: focus });

@@ -2067,11 +2067,14 @@ PdfCompanion = {
     },
 
     copyItemId() {
+        this.log("copyItemId called");
         let items = this.getSelectedItems();
         if (!items || items.length === 0) {
+            this.log("copyItemId: No items found");
             this.showNotification("PDF Companion", "No item selected");
             return;
         }
+        this.log("copyItemId: Found " + items.length + " items");
 
         let item = items[0];
         let key = item.key;
@@ -2372,12 +2375,45 @@ PdfCompanion = {
 
     // === ITEM/COLLECTION METHODS ===
     getSelectedItems() {
-        // Try to get active pane, fallback to main window's ZoteroPane
-        let zp = Zotero.getActiveZoteroPane() || Zotero.getMainWindow().ZoteroPane;
-        if (!zp || !zp.getSelectedItems) {
+        // Try multiple ways to access ZoteroPane for Zotero 8 compatibility
+        let zp = null;
+
+        // Try 1: getActiveZoteroPane
+        if (Zotero.getActiveZoteroPane) {
+            zp = Zotero.getActiveZoteroPane();
+        }
+
+        // Try 2: getMainWindow().ZoteroPane
+        if (!zp && Zotero.getMainWindow) {
+            let mainWin = Zotero.getMainWindow();
+            if (mainWin && mainWin.ZoteroPane) {
+                zp = mainWin.ZoteroPane;
+            }
+        }
+
+        // Try 3: mainWindow property
+        if (!zp && Zotero.mainWindow && Zotero.mainWindow.ZoteroPane) {
+            zp = Zotero.mainWindow.ZoteroPane;
+        }
+
+        // Try 4: Direct window access
+        if (!zp && typeof window !== 'undefined' && window.ZoteroPane) {
+            zp = window.ZoteroPane;
+        }
+
+        if (!zp) {
+            this.log("getSelectedItems: Could not access ZoteroPane");
             return [];
         }
-        return zp.getSelectedItems() || [];
+
+        if (!zp.getSelectedItems) {
+            this.log("getSelectedItems: ZoteroPane has no getSelectedItems method");
+            return [];
+        }
+
+        let items = zp.getSelectedItems();
+        this.log("getSelectedItems: Found " + (items ? items.length : 0) + " items");
+        return items || [];
     },
 
     getSelectedCollection() {

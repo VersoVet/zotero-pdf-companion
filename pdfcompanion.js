@@ -2067,7 +2067,14 @@ PdfCompanion = {
     },
 
     copyItemId() {
-        let items = Zotero.getActiveZoteroPane().getSelectedItems();
+        // Try to get active pane, fallback to main window's ZoteroPane
+        let zp = Zotero.getActiveZoteroPane() || Zotero.getMainWindow().ZoteroPane;
+        if (!zp) {
+            this.showNotification("PDF Companion", "Unable to access Zotero");
+            return;
+        }
+
+        let items = zp.getSelectedItems && zp.getSelectedItems();
         if (!items || items.length === 0) {
             this.showNotification("PDF Companion", "No item selected");
             return;

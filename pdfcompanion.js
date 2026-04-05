@@ -2381,6 +2381,7 @@ PdfCompanion = {
         // Try 1: getActiveZoteroPane
         if (Zotero.getActiveZoteroPane) {
             zp = Zotero.getActiveZoteroPane();
+            this.log("getSelectedItems: Using getActiveZoteroPane");
         }
 
         // Try 2: getMainWindow().ZoteroPane
@@ -2388,17 +2389,20 @@ PdfCompanion = {
             let mainWin = Zotero.getMainWindow();
             if (mainWin && mainWin.ZoteroPane) {
                 zp = mainWin.ZoteroPane;
+                this.log("getSelectedItems: Using getMainWindow().ZoteroPane");
             }
         }
 
         // Try 3: mainWindow property
         if (!zp && Zotero.mainWindow && Zotero.mainWindow.ZoteroPane) {
             zp = Zotero.mainWindow.ZoteroPane;
+            this.log("getSelectedItems: Using Zotero.mainWindow.ZoteroPane");
         }
 
         // Try 4: Direct window access
         if (!zp && typeof window !== 'undefined' && window.ZoteroPane) {
             zp = window.ZoteroPane;
+            this.log("getSelectedItems: Using window.ZoteroPane");
         }
 
         if (!zp) {
@@ -2406,14 +2410,26 @@ PdfCompanion = {
             return [];
         }
 
-        if (!zp.getSelectedItems) {
-            this.log("getSelectedItems: ZoteroPane has no getSelectedItems method");
-            return [];
+        // Try itemsView.getSelectedItems() (Zotero 8 API)
+        if (zp.itemsView && zp.itemsView.getSelectedItems) {
+            this.log("getSelectedItems: Trying itemsView.getSelectedItems()");
+            let items = zp.itemsView.getSelectedItems();
+            this.log("getSelectedItems: itemsView returned " + (items ? items.length : 0) + " items");
+            if (items && items.length > 0) {
+                return items;
+            }
         }
 
-        let items = zp.getSelectedItems();
-        this.log("getSelectedItems: Found " + (items ? items.length : 0) + " items");
-        return items || [];
+        // Try direct getSelectedItems() method
+        if (zp.getSelectedItems) {
+            this.log("getSelectedItems: Trying zp.getSelectedItems()");
+            let items = zp.getSelectedItems();
+            this.log("getSelectedItems: zp.getSelectedItems() returned " + (items ? items.length : 0) + " items");
+            return items || [];
+        }
+
+        this.log("getSelectedItems: ZoteroPane has no getSelectedItems method or itemsView");
+        return [];
     },
 
     getSelectedCollection() {

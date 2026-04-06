@@ -16,13 +16,13 @@ PLUGIN_ID="pdf-companion@onyx.local"
 # VERSO-Z490M (Linux) via VPN
 LINUX_NAME="verso-Z490M"
 LINUX_USER="verso"
-LINUX_HOST="${LINUX_IP:-172.16.0.4}"
+LINUX_HOST="${LINUX_IP:-172.16.0.3}"
 LINUX_PATH="/home/verso/.zotero/zotero/*.default*/extensions"
 
 # Windows PC via VPN (currently offline or IP changed)
 WIN_NAME="drlio-PC"
 WIN_USER="drlio"
-WIN_HOST="${WIN_IP:-172.16.0.3}"
+WIN_HOST="${WIN_IP:-172.16.0.4}"
 WIN_PATH="C:/Users/drlio/AppData/Roaming/Zotero/Zotero/Profiles/lr7dts6a.default/extensions"
 
 # VERSO-CONSULT (10.0.0.3) - Windows

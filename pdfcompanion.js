@@ -1210,12 +1210,13 @@ PdfCompanion = {
         this.log("Item: " + item.key + " | Focus: " + focus + " | Provider: " + provider);
 
         try {
-            // Build URL like summarizePaper does (simple concatenation)
-            let url = this.config.paperReaderUrl + "/analyze/zotero-stream?" +
+            // Use focused extraction endpoint per API.md (line 88)
+            let url = this.config.paperReaderUrl + "/analyze/zotero/focused/stream?" +
                 "zotero_key=" + encodeURIComponent(item.key) +
                 "&focus=" + encodeURIComponent(focus) +
-                "&lecture_mode=" + encodeURIComponent("standard") +
-                "&provider=" + encodeURIComponent(provider || "claude_cli");
+                "&provider=" + encodeURIComponent(provider || "claude_cli") +
+                "&store_to_dropbox=true" +
+                "&link_to_zotero=true";
 
             this.log("URL: " + url.substring(0, 100) + "...");
 
@@ -1367,14 +1368,24 @@ PdfCompanion = {
         toast.update("Connexion (" + provider + ")...");
 
         try {
-            let url = this.config.paperReaderUrl + "/analyze/zotero-stream?" +
-                "zotero_key=" + encodeURIComponent(item.key) +
-                "&lecture_mode=" + encodeURIComponent(mode) +
-                "&provider=" + encodeURIComponent(provider) +
-                "&extract_figures=" + (extractFigures ? "true" : "false");
+            let url;
 
+            // Choose endpoint based on whether focus is provided (API.md lines 64 vs 88)
             if (focus) {
-                url += "&focus=" + encodeURIComponent(focus);
+                // Focused extraction endpoint (line 88)
+                url = this.config.paperReaderUrl + "/analyze/zotero/focused/stream?" +
+                    "zotero_key=" + encodeURIComponent(item.key) +
+                    "&focus=" + encodeURIComponent(focus) +
+                    "&provider=" + encodeURIComponent(provider) +
+                    "&store_to_dropbox=true" +
+                    "&link_to_zotero=true";
+            } else {
+                // Standard analysis endpoint (line 64)
+                url = this.config.paperReaderUrl + "/analyze/zotero-stream?" +
+                    "zotero_key=" + encodeURIComponent(item.key) +
+                    "&lecture_mode=" + encodeURIComponent(mode) +
+                    "&provider=" + encodeURIComponent(provider) +
+                    "&extract_figures=" + (extractFigures ? "true" : "false");
             }
 
             this.log("SSE Paper Reader: " + url + " (mode=" + mode + ", focus=" + (focus ? "yes" : "no") + ")");
@@ -7560,7 +7571,9 @@ PdfCompanion = {
                     addSseEvent('start', 'Mode: avec sous-collections');
                 }
 
-                let url = self.config.paperReaderUrl + "/synthesize/collection/" + encodeURIComponent(collection.key) + "/stream-v2";
+                let url = self.config.paperReaderUrl + "/synthesize/collection/" +
+                    encodeURIComponent(collection.key) + "/stream-v2?" +
+                    "include_subcollections=" + (includeSubcollections ? "true" : "false");
                 self.log("Starting collection synthesis: " + url);
 
                 try {
@@ -7585,8 +7598,10 @@ PdfCompanion = {
                     currentXhr.abort();
                 }
 
-                // Use the synthesis collection stream endpoint
-                let sseUrl = self.config.paperReaderUrl + "/synthesize/collection/" + encodeURIComponent(collection.key) + "/stream-v2";
+                // Use the synthesis collection stream endpoint with parameters
+                let sseUrl = self.config.paperReaderUrl + "/synthesize/collection/" +
+                    encodeURIComponent(collection.key) + "/stream-v2?" +
+                    "include_subcollections=" + (includeSubcollections ? "true" : "false");
 
                 self.log("Connecting to SSE: " + sseUrl);
                 addSseEvent('progress', 'Connexion au stream SSE...');

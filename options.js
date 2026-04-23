@@ -49,7 +49,7 @@ function setPref(key, value) {
 
 function onLoad() {
     // Load current preferences
-    let host = getPref("serverHost", "10.0.0.44");
+    let host = getPref("serverHost", "10.0.0.21");
     let port = getPref("serverPort", 8451);
 
     document.getElementById("pdfcompanion-server-host").value = host;

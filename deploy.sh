@@ -16,7 +16,7 @@ PLUGIN_ID="pdf-companion@onyx.local"
 # VERSO-Z490M (Linux) via VPN
 LINUX_NAME="verso-Z490M"
 LINUX_USER="verso"
-LINUX_HOST="${LINUX_IP:-172.16.0.3}"
+LINUX_HOST="${LINUX_IP:-172.16.0.7}"
 LINUX_PATH="/home/verso/.zotero/zotero/*.default*/extensions"
 
 # Windows PC via VPN (currently offline or IP changed)

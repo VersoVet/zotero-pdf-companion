@@ -10,7 +10,7 @@ PdfCompanion = {
     timer: null,
 
     // Default values
-    defaultHost: "10.0.0.44",
+    defaultHost: "10.0.0.21",
     defaultPort: 8451,
     paperReaderPort: 8462,  // Paper-Reader HTTP port
 
@@ -8304,7 +8304,7 @@ PdfCompanion = {
                                 appendLog('[INFO] Attaching to Zotero...', 'log-info');
 
                                 // Attach to "Synthèses & Productions" item (K5D5C5NB)
-                                Zotero.HTTP.request("POST", "http://10.0.0.44:8331/item/K5D5C5NB/attachment", {
+                                Zotero.HTTP.request("POST", self.config.apiUrl + "/item/K5D5C5NB/attachment", {
                                     headers: { "Content-Type": "application/json" },
                                     body: JSON.stringify({
                                         url: downloadUrl,

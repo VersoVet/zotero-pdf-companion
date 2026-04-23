@@ -13,7 +13,7 @@ async function startup({ id, version, rootURI }) {
 
     // Initialize default preferences
     const defaults = {
-        "extensions.pdfcompanion.serverHost": "10.0.0.44",
+        "extensions.pdfcompanion.serverHost": "10.0.0.21",
         "extensions.pdfcompanion.serverPort": 8451
     };
     for (let [key, value] of Object.entries(defaults)) {

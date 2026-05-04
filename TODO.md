@@ -2,37 +2,37 @@
 
 ## Known Issues & Limitations
 
-### 🟡 [INVESTIGATING] CrossRef download fails for some articles
+### ✅ [RESOLVED] CrossRef finds article but PDF behind paywall
 
-**Status**: Under investigation  
-**Severity**: Medium  
+**Status**: RESOLVED (Not a bug - expected behavior)  
+**Severity**: Low (user education)  
 **Reported**: 2026-05-04  
-**Article**: "Proteomic, mechanical, and biochemical characterization of cartilage development"
+**Article**: DOI 10.1016/j.abb.2017.05.009 - "Repulsive surfaces and lamellar lubrication..."
 
-**Symptom**:
-- Backend finds article on CrossRef ✅
-- But PDF download fails ❌
-- Toast shows progress but no PDF attached
+**Root Cause**:
+Article is published by **Elsevier BV** - a commercial paywall publisher.
+- CrossRef correctly finds the article metadata ✅
+- But PDF is **behind Elsevier paywall** 🔒
+- **NO legal open access** available:
+  - Unpaywall: ❌ Not OA
+  - PubMed Central: ❌ Not available
+  - Crossref: ❌ Paywall only
 
-**Possible Causes**:
-1. CrossRef API returns DOI but without PDF URL
-2. PDF URL is behind paywall (no open access)
-3. SSL/certificate issue downloading from CrossRef server
-4. Timeout during large file download
-5. Article metadata doesn't include PDF link
+**System Behavior** (CORRECT):
+1. Searches all legal sources (Unpaywall, PubMed, CrossRef) ✅
+2. Finds article on CrossRef ✅
+3. Cannot retrieve free PDF ❌
+4. Reports "not found" as expected
 
-**How to Debug**:
-1. Check Tools > PDF Companion > Show Logs
-   - Look for "crossref" events
-   - Find exact error message
-2. Note DOI of article (from Zotero)
-3. Try other sources (Unpaywall, PubMed, Sci-Hub)
-   - If one works: CrossRef-specific issue
-   - If none work: broader problem
+**This is NOT a bug** - the system correctly identifies that the PDF
+is not freely available. Many Elsevier articles (published pre-2020)
+do not have open access.
 
-**Workaround**:
-- Use Sci-Hub as fallback
-- Or attach PDF manually via "Joindre un PDF"
+**User Options**:
+1. Access via university/institutional license (VPN)
+2. Request PDF from authors directly
+3. Attach PDF manually if you have it
+4. Purchase access from publisher ($30-50)
 
 ---
 

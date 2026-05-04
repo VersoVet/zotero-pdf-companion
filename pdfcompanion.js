@@ -590,6 +590,23 @@ PdfCompanion = {
                 // Check if PDF exists before enrichment
                 let hasPdf = await this.itemHasPdfAttachment(item);
 
+                // If PDF exists, check if it's a local attachment that needs migration to Dropbox
+                if (hasPdf) {
+                    this.log("Auto-detecting PDF for: " + title + " - checking if local attachment...");
+                    let localPdfPath = await this.getLocalPdfAttachmentPath(item);
+                    if (localPdfPath) {
+                        this.log("Found local PDF attachment - migrating to Dropbox...");
+                        try {
+                            await this.uploadLocalPdfToDropbox(item, localPdfPath);
+                            this.log("PDF migrated to Dropbox for: " + title);
+                            hasPdf = await this.itemHasPdfAttachment(item);  // Re-check after migration
+                        } catch (migrationErr) {
+                            this.log("Failed to migrate PDF: " + migrationErr.message);
+                            // Continue with enrichment anyway
+                        }
+                    }
+                }
+
                 // Enrich metadata (may find and attach PDF)
                 this.log("Auto-enriching: " + title + (hasPdf ? " (PDF present)" : " (no PDF)"));
                 await this.enrichMetadata(item);
@@ -607,6 +624,87 @@ PdfCompanion = {
             } catch (e) {
                 this.log("processPendingItems error: " + e);
             }
+        }
+    },
+
+    async getLocalPdfAttachmentPath(item) {
+        // Get path to local PDF attachment if exists, returns null for Dropbox links
+        let attachmentIDs = item.getAttachments();
+        for (let attId of attachmentIDs) {
+            let att = await Zotero.Items.getAsync(attId);
+            if (att && att.attachmentContentType === "application/pdf") {
+                // Check if it's a local file (not a linked URL)
+                let linkMode = att.attachmentLinkMode;
+                if (linkMode === Zotero.Attachments.LINK_MODE_IMPORTED_FILE ||
+                    linkMode === 2) {  // LINK_MODE_IMPORTED_FILE = 2
+                    try {
+                        let file = att.getFile();
+                        if (file && file.exists()) {
+                            this.log("Found local PDF file: " + file.path);
+                            return file.path;
+                        }
+                    } catch (e) {
+                        this.log("Error getting local PDF file: " + e.message);
+                    }
+                }
+            }
+        }
+        return null;
+    },
+
+    async uploadLocalPdfToDropbox(item, filePath) {
+        // Upload local PDF to Dropbox and replace attachment with link
+        let title = item.getField("title") || "Unknown";
+        this.log("Migrating PDF to Dropbox for: " + title);
+
+        try {
+            let file = Zotero.File.pathToFile(filePath);
+            if (!file.exists()) {
+                throw new Error("PDF file not found: " + filePath);
+            }
+
+            let fileData = await Zotero.File.getBinaryContentsAsync(file);
+            let fileBytes = new Uint8Array(fileData.length);
+            for (let i = 0; i < fileData.length; i++) {
+                fileBytes[i] = fileData.charCodeAt(i) & 0xff;
+            }
+
+            // Build multipart form
+            let boundary = "----ZoteroPdfCompanion" + Date.now();
+            let body = "--" + boundary + "\r\n" +
+                'Content-Disposition: form-data; name="file"; filename="' + file.leafName + '"\r\n' +
+                "Content-Type: application/pdf\r\n\r\n";
+
+            let encoder = new TextEncoder();
+            let header = encoder.encode(body);
+            let footer = encoder.encode("\r\n--" + boundary + "--\r\n");
+            let bodyArray = new Uint8Array(header.length + fileBytes.length + footer.length);
+            bodyArray.set(header, 0);
+            bodyArray.set(fileBytes, header.length);
+            bodyArray.set(footer, header.length + fileBytes.length);
+
+            // Upload via /attach-pdf endpoint
+            let url = this.config.apiUrl + "/item/" + encodeURIComponent(item.key) + "/attach-pdf?replace_existing=true";
+            this.log("Uploading to: " + url);
+
+            let response = await Zotero.HTTP.request("POST", url, {
+                headers: { "Content-Type": "multipart/form-data; boundary=" + boundary },
+                body: bodyArray,
+                responseType: "json",
+                timeout: 120000
+            });
+
+            if (response.response && response.response.success) {
+                this.log("✅ PDF uploaded to Dropbox successfully");
+                // Sync to get the updated attachment
+                try { Zotero.Sync.Runner.sync(); } catch (e) {}
+                return true;
+            } else {
+                throw new Error(response.response?.error || "Upload failed");
+            }
+        } catch (e) {
+            this.log("❌ Error uploading PDF: " + e.message);
+            throw e;
         }
     },
 

@@ -142,6 +142,83 @@ if (!hasPdf) {
 
 ## Feature Requests & Enhancements
 
+### 🟡 [PROPOSED] Expand PDF recovery sources
+
+**Status**: Proposed  
+**Priority**: Medium  
+**Difficulty**: Easy to Medium  
+**Benefit**: 85-90% coverage of academic articles
+
+**Current Sources** (4):
+1. Unpaywall - OA metadata
+2. PubMed Central - Biomedical
+3. Publisher (DOI) - Sometimes OA
+4. Sci-Hub - Fallback (grey legal area)
+
+**TIER 1 - Quick Wins** (Easy to implement):
+1. **arXiv** (2M+ preprints)
+   - physics, math, CS, q-bio
+   - Free API, direct PDF downloads
+   - 100% legal
+
+2. **Europe PMC** (45M+ articles)
+   - Better coverage than PubMed
+   - Free API, REST accessible
+   - 100% legal
+
+3. **CORE** (200M+ OA articles)
+   - Global OA aggregator
+   - Free API available
+   - Direct PDF access
+
+4. **Improve CrossRef OA** (current)
+   - Better filtering for OA articles
+   - Existing API, just better queries
+
+**TIER 2 - Useful** (Medium complexity):
+1. **Hindawi** (300+ OA journals)
+   - Major OA publisher
+   - API available, direct PDFs
+   - 100% legal
+
+2. **bioRxiv/medRxiv** (preprints)
+   - Biomedical preprints
+   - API available
+   - 100% legal
+
+3. **SSRN** (800k social science papers)
+   - Economics, law, management
+   - Limited API but accessible
+   - 100% legal
+
+**TIER 3 - High Risk** (Don't implement):
+1. **Google Scholar** - No API, scraping violates ToS
+2. **ResearchGate** - No official API, scraping risky
+
+**Recommended Cascade Order**:
+```
+1. arXiv          (quick for preprints)
+2. Unpaywall      (established OA finder)
+3. Europe PMC     (better biomedical coverage)
+4. PubMed Central (NIH articles)
+5. Hindawi        (OA publisher)
+6. CORE           (OA aggregator)
+7. Publisher DOI  (sometimes OA)
+8. Sci-Hub        (fallback only)
+```
+
+**Expected Impact**:
+- Current: ~65% coverage with 4 sources
+- After TIER 1: ~80% coverage
+- After TIER 2: ~85-90% coverage
+
+**Implementation Notes**:
+- All free APIs (no subscription needed)
+- arXiv + Europe PMC easiest to add first
+- Can add incrementally without breaking existing sources
+
+---
+
 ### 🟠 [ENHANCEMENT] Add Google Scholar PDF recovery
 
 **Status**: Proposed  

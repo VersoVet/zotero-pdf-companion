@@ -23,6 +23,7 @@ async function startup({ id, version, rootURI }) {
     }
 
     Services.scriptloader.loadSubScript(rootURI + 'pdfcompanion.js');
+    Services.scriptloader.loadSubScript(rootURI + 'pdf-sources.js');
     PdfCompanion.init({ id, version, rootURI });
     PdfCompanion.addToAllWindows();
 }

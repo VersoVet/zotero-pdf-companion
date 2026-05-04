@@ -638,9 +638,40 @@ PdfCompanion = {
         this.log("Recovering PDF for: " + title);
 
         let toast = silent ? null : this.Toast.progress("PDF Companion - " + title.substring(0, 30));
-        if (toast) toast.update("Connecting...");
+        if (toast) toast.update("🔍 Starting cascade search...");
 
         try {
+            // PHASE 1: Try local sources first (fast, no server dependency)
+            this.log("[RecoverPdf] Phase 1: Trying local sources (arXiv, Europe PMC, CORE, Hindawi)");
+            if (PdfCompanion.PdfSources) {
+                let cascadeResult = await PdfCompanion.PdfSources.cascadeSearch(item, toast);
+
+                if (cascadeResult.status === "success") {
+                    this.log("[RecoverPdf] ✅ PDF found via: " + cascadeResult.source);
+
+                    // Download the PDF found by cascade
+                    if (cascadeResult.pdf_url) {
+                        if (toast) toast.update("⬇️ Downloading PDF...");
+                        try {
+                            await this.attachPdfToItem(item, cascadeResult.pdf_url, cascadeResult.source);
+                            if (toast) toast.success("✅ PDF attached from " + cascadeResult.source);
+                            if (!silent) {
+                                this.showNotification("PDF Found!", this.getSourceLabel(cascadeResult.source) + " - " + title.substring(0, 40));
+                                try { Zotero.Sync.Runner.sync(); } catch (e) {}
+                            }
+                            return { status: "success", source: cascadeResult.source, message: cascadeResult.message };
+                        } catch (downloadErr) {
+                            this.log("[RecoverPdf] Error downloading from cascade: " + downloadErr.message);
+                            // Fall through to backend phase
+                        }
+                    }
+                }
+            }
+
+            // PHASE 2: Try backend cascade (Unpaywall, PubMed, Publisher, Sci-Hub)
+            this.log("[RecoverPdf] Phase 2: Trying backend sources (Unpaywall, PubMed, etc.)");
+            if (toast) toast.update("🔍 Searching backend sources...");
+
             let url = this.config.apiUrl + "/audit/recover-pdf-stream?" +
                 "key=" + encodeURIComponent(item.key) +
                 "&use_scihub=" + (this.config.useScihub ? "true" : "false");
@@ -787,6 +818,102 @@ PdfCompanion = {
         fp.appendFilter("PDF Files", "*.pdf");
         let result = await fp.show();
         return (result === fp.returnOK) ? fp.file : null;
+    },
+
+    /**
+     * Download PDF from URL and attach to Zotero item
+     * Used by cascade search and other sources
+     */
+    async attachPdfToItem(item, pdfUrl, source) {
+        this.log("[AttachPdf] Downloading from " + source + ": " + pdfUrl.substring(0, 100));
+
+        // Download PDF to temp file
+        let file = await this.downloadPdf(pdfUrl);
+        if (!file) {
+            throw new Error("Failed to download PDF from " + source);
+        }
+
+        // Attach to item as PDF attachment
+        try {
+            // Create attachment item in Zotero
+            let attachmentItem = await Zotero.Items.add({
+                itemType: 'attachment',
+                parentID: item.id,
+                attachmentContentType: 'application/pdf',
+                attachmentPath: file.path,
+                title: item.getField("title") + " [PDF]"
+            });
+
+            this.log("[AttachPdf] ✅ Attached to item");
+
+            // Save the attachment
+            await attachmentItem.saveTx();
+
+            return attachmentItem;
+        } catch (e) {
+            this.log("[AttachPdf] Error: " + e.message);
+            try { file.remove(false); } catch (ignoreErr) {}
+            throw new Error("Failed to attach PDF: " + e.message);
+        }
+    },
+
+    /**
+     * Download PDF from URL to temp file
+     */
+    async downloadPdf(url) {
+        return new Promise((resolve, reject) => {
+            let file = Zotero.File.createTempFile();
+            let process = Components.classes["@mozilla.org/process/util;1"]
+                .createInstance(Components.interfaces.nsIProcess);
+
+            // Use curl if available, else fallback
+            try {
+                process.init(Zotero.File.pathToFile("/usr/bin/curl"));
+                process.run(true, ["-L", "-o", file.path, url], 2);
+
+                if (file.fileSize > 0) {
+                    this.log("[DownloadPdf] ✅ Downloaded " + (file.fileSize / 1024 / 1024).toFixed(2) + " MB");
+                    resolve(file);
+                } else {
+                    file.remove(false);
+                    reject(new Error("Downloaded file is empty"));
+                }
+            } catch (e) {
+                // Fallback: use XMLHttpRequest
+                let xhr = new XMLHttpRequest();
+                xhr.open("GET", url, true);
+                xhr.responseType = "arraybuffer";
+                xhr.timeout = 60000;
+
+                xhr.onload = () => {
+                    try {
+                        let stream = Components.classes["@mozilla.org/network/file-output-stream;1"]
+                            .createInstance(Components.interfaces.nsIFileOutputStream);
+                        stream.init(file, 0x04 | 0x08 | 0x20, 0o644, 0);
+                        stream.write(String.fromCharCode.apply(null, new Uint8Array(xhr.response)), xhr.response.byteLength);
+                        stream.close();
+
+                        this.log("[DownloadPdf] ✅ Downloaded " + (xhr.response.byteLength / 1024 / 1024).toFixed(2) + " MB");
+                        resolve(file);
+                    } catch (writeErr) {
+                        file.remove(false);
+                        reject(new Error("Failed to write PDF: " + writeErr.message));
+                    }
+                };
+
+                xhr.onerror = () => {
+                    file.remove(false);
+                    reject(new Error("Download failed"));
+                };
+
+                xhr.ontimeout = () => {
+                    file.remove(false);
+                    reject(new Error("Download timeout"));
+                };
+
+                xhr.send();
+            }
+        });
     },
 
     async uploadLocalPdf(item, filePath) {

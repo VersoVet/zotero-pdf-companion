@@ -766,13 +766,14 @@ PdfCompanion = {
                             try {
                                 let data = JSON.parse(line.substring(6));
                                 // Log each step for debugging
-                                self.log("[Recovery] Event: " + data.event + " | Message: " + (data.message || self.getStepText(data)));
+                                let eventName = data.event || data.step || "unknown";
+                                self.log("[Recovery] [" + eventName + "] " + (data.status || "") + " | " + (data.message || self.getStepText(data)));
 
                                 // Update toast with clear message
                                 let displayMsg = data.message || self.getStepText(data);
                                 if (toast) toast.update(displayMsg);
 
-                                if (data.event === "complete" || data.event === "error" || data.event === "success") {
+                                if (eventName === "complete" || eventName === "error" || eventName === "success") {
                                     result = data;
                                 }
                             } catch (e) {

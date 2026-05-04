@@ -140,6 +140,48 @@ if (!hasPdf) {
 
 ---
 
+## Feature Requests & Enhancements
+
+### 🟠 [ENHANCEMENT] Add Google Scholar PDF recovery
+
+**Status**: Proposed  
+**Priority**: Medium  
+**Difficulty**: High
+
+**Benefits**:
+- Find pre-prints and post-prints (often free)
+- Access via university repositories
+- Better coverage for older/niche articles
+
+**Challenges**:
+- Google Scholar has NO official API
+- Blocks automated requests (scraping)
+- Scraping violates Terms of Service
+
+**Solutions**:
+1. **SerpAPI (Recommended)**
+   - Official API for Google Scholar
+   - Reliable, legal, no scraping
+   - Cost: ~$0.01 per request
+   - Integrates with Node.js/Python
+
+2. **ScraperAPI (Risky)**
+   - Proxy-based, bypasses blocks
+   - But: violates Google ToS, can be detected
+   - Higher latency, less reliable
+
+3. **Custom Scraper (Not Recommended)**
+   - Parse Google Scholar HTML directly
+   - Fragile: breaks when Google changes layout
+   - High maintenance burden
+
+**Recommendation**:
+- If budget available: SerpAPI + scholarly.js library
+- Otherwise: improve Unpaywall/PubMed coverage instead
+- Unpaywall + PubMed already cover ~60% of cases
+
+---
+
 ## Features Complètement Implémentés
 
 ### ✅ Core Features (Production)

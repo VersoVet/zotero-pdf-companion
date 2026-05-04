@@ -662,11 +662,19 @@ PdfCompanion = {
                         if (line.startsWith("data: ")) {
                             try {
                                 let data = JSON.parse(line.substring(6));
-                                if (toast) toast.update(data.message || self.getStepText(data));
-                                if (data.event === "complete" || data.event === "error") {
+                                // Log each step for debugging
+                                self.log("[Recovery] Event: " + data.event + " | Message: " + (data.message || self.getStepText(data)));
+
+                                // Update toast with clear message
+                                let displayMsg = data.message || self.getStepText(data);
+                                if (toast) toast.update(displayMsg);
+
+                                if (data.event === "complete" || data.event === "error" || data.event === "success") {
                                     result = data;
                                 }
-                            } catch (e) {}
+                            } catch (e) {
+                                self.log("[Recovery] Parse error: " + e);
+                            }
                         }
                     }
                 };
@@ -709,16 +717,35 @@ PdfCompanion = {
     },
 
     getStepText(data) {
+        // Map backend events to clear user-facing messages
+        // Distinguish between SEARCHING, FOUND, DOWNLOADING, and FAILED
         let labels = {
-            "start": "Starting...",
-            "unpaywall": "Checking Unpaywall...",
-            "pmc": "Checking PubMed Central...",
-            "doi_redirect": "Checking publisher...",
-            "scihub": "Checking Sci-Hub...",
-            "download": "Downloading...",
-            "attach": "Attaching...",
-            "complete": "Done!",
-            "error": "Error"
+            // Search phase
+            "start": "🔍 Searching for PDF...",
+            "unpaywall": "🔍 Searching Unpaywall (open access)...",
+            "unpaywall_found": "✅ PDF found on Unpaywall!",
+            "unpaywall_not_found": "❌ Not found on Unpaywall",
+            "pmc": "🔍 Searching PubMed Central...",
+            "pmc_found": "✅ PDF found on PubMed Central!",
+            "pmc_not_found": "❌ Not found on PubMed Central",
+            "crossref": "🔍 Searching CrossRef for DOI...",
+            "crossref_check": "🔍 Checking CrossRef metadata...",
+            "crossref_found": "✅ DOI found on CrossRef!",
+            "crossref_downloading": "⬇️ Downloading from CrossRef...",
+            "crossref_not_found": "❌ Not found on CrossRef",
+            "doi_redirect": "🔍 Checking publisher via DOI...",
+            "doi_found": "✅ PDF found on publisher!",
+            "doi_not_found": "❌ Not available from publisher",
+            "scihub": "🔍 Searching Sci-Hub...",
+            "scihub_found": "✅ PDF found on Sci-Hub!",
+            "scihub_not_found": "❌ Not found on Sci-Hub",
+            "download": "⬇️ Downloading PDF...",
+            "downloading": "⬇️ Downloading PDF...",
+            "attach": "📎 Attaching to Zotero...",
+            "complete": "✅ Done!",
+            "success": "✅ PDF successfully recovered!",
+            "error": "❌ Error",
+            "not_found": "❌ PDF not found in any source"
         };
         return labels[data.event] || data.message || data.event;
     },

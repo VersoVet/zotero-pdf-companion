@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "name": "PDF Companion",
-  "version": "4.14.0",
-  "description": "Auto PDF fetch for Zotero (v4.14.0)",
+  "version": "4.15.0",
+  "description": "Auto PDF fetch for Zotero (v4.15.0)",
   "author": "Onyx",
   "forge": {
     "type": "custom",

@@ -1,5 +1,41 @@
 # TODO - Zotero PDF Companion
 
+## Known Issues & Limitations
+
+### 🟡 [INVESTIGATING] CrossRef download fails for some articles
+
+**Status**: Under investigation  
+**Severity**: Medium  
+**Reported**: 2026-05-04  
+**Article**: "Proteomic, mechanical, and biochemical characterization of cartilage development"
+
+**Symptom**:
+- Backend finds article on CrossRef ✅
+- But PDF download fails ❌
+- Toast shows progress but no PDF attached
+
+**Possible Causes**:
+1. CrossRef API returns DOI but without PDF URL
+2. PDF URL is behind paywall (no open access)
+3. SSL/certificate issue downloading from CrossRef server
+4. Timeout during large file download
+5. Article metadata doesn't include PDF link
+
+**How to Debug**:
+1. Check Tools > PDF Companion > Show Logs
+   - Look for "crossref" events
+   - Find exact error message
+2. Note DOI of article (from Zotero)
+3. Try other sources (Unpaywall, PubMed, Sci-Hub)
+   - If one works: CrossRef-specific issue
+   - If none work: broader problem
+
+**Workaround**:
+- Use Sci-Hub as fallback
+- Or attach PDF manually via "Joindre un PDF"
+
+---
+
 ## Bugs Actifs
 
 ### ✅ [FIXED] Enrichissement n'applique pas les modifications aux champs

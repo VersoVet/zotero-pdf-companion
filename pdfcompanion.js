@@ -587,9 +587,23 @@ PdfCompanion = {
                 if (!["journalArticle", "conferencePaper", "preprint", "book", "thesis"].includes(itemType)) continue;
                 let title = item.getField("title") || "Unknown";
 
-                // Enrich metadata only
-                this.log("Auto-enriching: " + title);
+                // Check if PDF exists before enrichment
+                let hasPdf = await this.itemHasPdfAttachment(item);
+
+                // Enrich metadata (may find and attach PDF)
+                this.log("Auto-enriching: " + title + (hasPdf ? " (PDF present)" : " (no PDF)"));
                 await this.enrichMetadata(item);
+
+                // If no PDF before enrich, verify recovery worked
+                if (!hasPdf) {
+                    let hasPdfNow = await this.itemHasPdfAttachment(item);
+                    if (hasPdfNow) {
+                        this.log("PDF attached by enrichment for: " + title);
+                    } else {
+                        this.log("Enrichment did not find PDF for: " + title + " → trying direct recovery");
+                        await this.recoverPdf(item, true);  // silent=true to avoid double notifications
+                    }
+                }
             } catch (e) {
                 this.log("processPendingItems error: " + e);
             }

@@ -2,6 +2,41 @@
 
 ## Bugs Actifs
 
+### ✅ [FIXED] Enrichissement n'applique pas les modifications aux champs
+
+**Status**: FIXED (commit 8c4cce5)  
+**Severity**: Critical  
+**Reported**: 2026-05-04  
+**Fixed**: 2026-05-04
+
+**Root Cause**:
+`enrichMetadata()` recevait les champs enrichis du backend mais ne les appliquait JAMAIS à l'item Zotero. 
+- Backend retourne : `result.fields_updated: {abstract: "...", doi: "10.xxx", ...}`
+- Plugin collectait ces données pour logging UNIQUEMENT
+- `item.reload()` ne rechargeait que depuis Zotero local, pas depuis le résultat du backend
+
+**Solution Applied**:
+1. Extraction des `fields_updated` du résultat final
+2. Application via `item.setField(field, value)` pour chaque champ
+3. Sauvegarde avec `item.saveTx()`
+4. Logging détaillé pour chaque application
+
+```js
+// BEFORE: juste log + reload
+await item.reload();
+
+// AFTER:
+for (let [field, value] of Object.entries(finalResult.result.fields_updated)) {
+    item.setField(field, value);
+}
+await item.saveTx();
+await item.reload();
+```
+
+**Result**: Enrichissement applique maintenant les métadonnées enrichies ✅
+
+---
+
 ### ✅ [FIXED] Auto-enrichissement n'utilise pas recovery
 
 **Status**: FIXED (commit 7eed245)  

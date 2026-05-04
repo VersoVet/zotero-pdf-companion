@@ -1181,10 +1181,54 @@ PdfCompanion = {
             fieldsUpdated = [...new Set(fieldsUpdated)];
 
             if (finalResult && (finalResult.status === "success" || finalResult.status === "partial")) {
+                // Apply enriched fields from backend to Zotero item
+                let fieldsApplied = 0;
+                if (finalResult.result && finalResult.result.fields_updated && typeof finalResult.result.fields_updated === "object") {
+                    this.log("[Enrich] Applying fields_updated from result: " + JSON.stringify(finalResult.result.fields_updated).substring(0, 200));
+                    for (let [field, value] of Object.entries(finalResult.result.fields_updated)) {
+                        if (value !== null && value !== undefined && value !== "") {
+                            try {
+                                item.setField(field, value);
+                                fieldsApplied++;
+                                this.log("[Enrich] Applied field: " + field + " = " + String(value).substring(0, 100));
+                            } catch (e) {
+                                this.log("[Enrich] Error applying field " + field + ": " + e.message);
+                            }
+                        }
+                    }
+                } else if (finalResult.fields_updated && typeof finalResult.fields_updated === "object") {
+                    this.log("[Enrich] Applying fields_updated (top-level): " + JSON.stringify(finalResult.fields_updated).substring(0, 200));
+                    for (let [field, value] of Object.entries(finalResult.fields_updated)) {
+                        if (value !== null && value !== undefined && value !== "") {
+                            try {
+                                item.setField(field, value);
+                                fieldsApplied++;
+                                this.log("[Enrich] Applied field: " + field + " = " + String(value).substring(0, 100));
+                            } catch (e) {
+                                this.log("[Enrich] Error applying field " + field + ": " + e.message);
+                            }
+                        }
+                    }
+                }
+
+                // Save changes if any were applied
+                if (fieldsApplied > 0) {
+                    try {
+                        this.log("[Enrich] Saving " + fieldsApplied + " applied fields...");
+                        await item.saveTx();
+                        changes.push("Champs appliques: " + fieldsApplied);
+                    } catch (saveErr) {
+                        this.log("[Enrich] Error saving item: " + saveErr.message);
+                    }
+                }
+
+                // Reload to refresh UI
+                await item.reload();
+
                 // Build unified summary message
                 // Add metadata changes
                 if (fieldsUpdated.length > 0) {
-                    changes.push("Metadonnees: " + fieldsUpdated.join(", "));
+                    changes.push("Metadonnees enrichies: " + fieldsUpdated.join(", "));
                 }
 
                 let summaryMsg;
@@ -1196,7 +1240,6 @@ PdfCompanion = {
 
                 this.log("[Enrich] Success: " + summaryMsg);
                 this.showNotification("Enrichissement termine!", summaryMsg);
-                await item.reload();
             } else {
                 let errMsg = finalResult?.message || finalResult?.error || "Erreur inconnue";
                 this.log("[Enrich] Echec: " + errMsg + " (result: " + JSON.stringify(finalResult) + ")");

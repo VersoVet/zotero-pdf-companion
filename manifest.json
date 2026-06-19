@@ -19,7 +19,7 @@
         {
           "name": "extension",
           "type": "extension",
-          "host": "172.16.0.5",
+          "host": "172.16.0.2",
           "required_files": ["bootstrap.js", "pdfcompanion.js"]
         }
       ],
@@ -49,7 +49,7 @@
   },
   "heart": {
     "deployment": {
-      "target_host": "172.16.0.5",
+      "target_host": "172.16.0.2",
       "platform": "windows"
     },
     "lifecycle": {

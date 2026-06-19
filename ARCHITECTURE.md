@@ -1,5 +1,7 @@
 # Architecture - Zotero PDF Companion
 
+**Updated: 2026-06-19** - Architecture documentation for v4.16.2
+
 ## Vue d'ensemble
 
 Plugin Zotero 7/8 intégrant l'infrastructure Onyx pour la gestion automatisée des PDFs et enrichissement bibliographique. Communication via SSE (Server-Sent Events) avec deux services backend:
@@ -170,6 +172,27 @@ Plugin lit `data.event || data.step` pour compatibilité avec les deux formats b
 - Backend URLs: tester accessibilité
 - Toast lifecycle: guard `closed` prevents no-ops
 
+## Utility Features (v4.16.2)
+
+### Copy Item ID / Copy Collection ID
+
+**Nouvelles fonctionnalités**:
+- `copyItemId()`: Copie l'ID Zotero d'un item au presse-papiers
+- `copyCollectionId()`: Copie l'ID d'une collection au presse-papiers
+
+**Implémentation**:
+- Clipboard API: `Zotero.Utilities.Internal.copyTextToClipboard()` avec fallback
+- Toast notification avec l'ID copié
+- Menu items ajoutés à:
+  - Tools > PDF Companion > Copy Item ID
+  - Item context menu > PDF Companion > Copy Item ID
+  - Collection context menu > PDF Companion > Copy Collection ID
+
+**Avantages**:
+- Permet export/automation avec IDs Zotero
+- API clipboard compatible Zotero 7 & 8
+- Fallback graceful si API change
+
 ## Décisions Architecturales
 
 1. **Toast custom vs Zotero.ProgressWindow**: Overlay dans DOM (problème multi-moniteur Gecko #98830)
@@ -177,3 +200,4 @@ Plugin lit `data.event || data.step` pour compatibilité avec les deux formats b
 3. **Configuration preferences**: Évite hardcoding, permet test multi-hosts
 4. **Auto-detection avec délai**: Laisse Zotero finir initialisation item
 5. **Logging circulaire (100 max)**: Balance verbosité vs mémoire
+6. **Clipboard API abstraction**: Try/catch pour compatibilité Zotero 7/8

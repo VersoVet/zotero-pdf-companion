@@ -1,5 +1,7 @@
 # API Endpoints - Zotero PDF Companion
 
+**Updated: 2026-06-19** - API endpoints documentation for Zotero PDF Companion plugin v4.16.2
+
 Le plugin consomme deux services backend via API HTTP avec communication SSE.
 
 ## Services Backend
@@ -376,6 +378,37 @@ Même format JSON dans le stream avec champ `event: "error"`:
 - Toast: ferme automatiquement après `success()` ou `error()` (5s)
 - Guard `closed`: empêche no-ops après `close()`
 - Fallback: pas de fenêtre disponible → no-op silencieux
+
+---
+
+## Utility Functions (v4.16.2)
+
+### Copy Item ID
+
+**Menu**: Tools > PDF Companion > Copy Item ID (ou item context menu)
+
+Copie l'ID Zotero (clé) de l'item sélectionné au presse-papiers.
+
+**Usage**:
+- Sélectionner un item dans la bibliothèque
+- Menu Tools > PDF Companion > Copy Item ID
+- Ou clic-droit sur item > PDF Companion > Copy Item ID
+- ID copié au presse-papiers, notification affichée
+
+**Response**: Toast notification avec ID + confirmation
+
+### Copy Collection ID
+
+**Menu**: Collection context menu (clic-droit sur collection)
+
+Copie l'ID Zotero (clé) de la collection sélectionnée au presse-papiers.
+
+**Usage**:
+- Clic-droit sur collection dans l'arbre
+- PDF Companion > Copy Collection ID
+- ID copié au presse-papiers, notification affichée
+
+**Response**: Toast notification avec ID + confirmation
 
 ---
 

@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "PDF Companion",
-  "version": "4.16.2",
+  "version": "4.16.3",
   "description": "Auto PDF fetch for Zotero (v4.16.2)",
   "author": "Onyx",
   "forge": {
@@ -10,7 +10,9 @@
     "development": {
       "dev_platform": "dendrite",
       "test_platform": "verso-acqui",
-      "remote_mount": true
+      "remote_mount": true,
+      "dev_status": "deployed",
+      "progress_percent": 100
     },
     "custom": {
       "target_app": "zotero",
@@ -20,10 +22,15 @@
           "name": "extension",
           "type": "extension",
           "host": "10.0.0.13",
-          "required_files": ["bootstrap.js", "pdfcompanion.js"]
+          "required_files": [
+            "bootstrap.js",
+            "pdfcompanion.js"
+          ]
         }
       ],
-      "vault_keys": ["ssh_password"]
+      "vault_keys": [
+        "ssh_password"
+      ]
     }
   },
   "icons": {

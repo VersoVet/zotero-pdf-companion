@@ -386,12 +386,6 @@ PdfCompanion = {
             sep2.id = 'pdfcompanion-tools-sep2';
             menupopup.appendChild(sep2);
 
-            let copyItem = doc.createXULElement('menuitem');
-            copyItem.id = 'pdfcompanion-tools-copyid';
-            copyItem.setAttribute('label', 'Copy Item ID');
-            copyItem.addEventListener('command', () => this.copyItemId());
-            menupopup.appendChild(copyItem);
-
             let testItem = doc.createXULElement('menuitem');
             testItem.id = 'pdfcompanion-tools-test';
             testItem.setAttribute('label', 'Test Connection');

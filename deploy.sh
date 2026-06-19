@@ -16,13 +16,13 @@ PLUGIN_ID="pdf-companion@onyx.local"
 # VERSO-Z490M (Linux) via VPN
 LINUX_NAME="verso-Z490M"
 LINUX_USER="verso"
-LINUX_HOST="${LINUX_IP:-172.16.0.4}"
+LINUX_HOST="${LINUX_IP:-172.16.0.7}"
 LINUX_PATH="/home/verso/.zotero/zotero/*.default*/extensions"
 
 # Windows PC via VPN (currently offline or IP changed)
 WIN_NAME="drlio-PC"
 WIN_USER="drlio"
-WIN_HOST="${WIN_IP:-172.16.0.5}"
+WIN_HOST="${WIN_IP:-172.16.0.4}"
 WIN_PATH="C:/Users/drlio/AppData/Roaming/Zotero/Zotero/Profiles/lr7dts6a.default/extensions"
 
 # VERSO-CONSULT (10.0.0.3) - Windows
@@ -45,7 +45,7 @@ echo ""
 echo "[1/4] Building XPI..."
 cd "$PLUGIN_DIR"
 rm -f pdf-companion-*.xpi
-zip -r "$XPI_NAME" manifest.json bootstrap.js pdfcompanion.js prefs.js options.xhtml options.js skin/ -x "*.git*"
+zip -r "$XPI_NAME" manifest.json bootstrap.js pdfcompanion.js pdf-sources.js prefs.js options.xhtml options.js skin/ -x "*.git*"
 echo "      Created: $XPI_NAME"
 LOCAL_SIZE=$(stat -c%s "$PLUGIN_DIR/$XPI_NAME")
 

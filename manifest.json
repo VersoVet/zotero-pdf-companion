@@ -1,12 +1,37 @@
 {
   "manifest_version": 2,
   "name": "PDF Companion",
-  "version": "4.11.0",
-  "description": "Auto PDF fetch for Zotero (v4.11.0)",
+  "version": "4.16.3",
+  "description": "Auto PDF fetch for Zotero (v4.16.2)",
   "author": "Onyx",
   "forge": {
-    "type": "addon",
-    "repository": "VersoVet/zotero-pdf-companion-plugin"
+    "type": "custom",
+    "repository": "VersoVet/zotero-pdf-companion-plugin",
+    "development": {
+      "dev_platform": "dendrite",
+      "test_platform": "verso-acqui",
+      "remote_mount": true,
+      "dev_status": "deployed",
+      "progress_percent": 100
+    },
+    "custom": {
+      "target_app": "zotero",
+      "build_output": "*.xpi",
+      "components": [
+        {
+          "name": "extension",
+          "type": "extension",
+          "host": "10.0.0.13",
+          "required_files": [
+            "bootstrap.js",
+            "pdfcompanion.js"
+          ]
+        }
+      ],
+      "vault_keys": [
+        "ssh_password"
+      ]
+    }
   },
   "icons": {
     "48": "skin/icon.png",
@@ -18,6 +43,25 @@
       "update_url": "https://raw.githubusercontent.com/VersoVet/zotero-pdf-companion/main/updates.json",
       "strict_min_version": "6.999",
       "strict_max_version": "8.0.*"
+    }
+  },
+  "core": {
+    "brain_area": "bibliotheca",
+    "routing": {
+      "port": 0
+    },
+    "name": "zotero-pdf-companion-plugin",
+    "type": "custom",
+    "description": "Auto PDF fetch and enrichment for Zotero 7/8 with Onyx integration"
+  },
+  "heart": {
+    "deployment": {
+      "target_host": "10.0.0.13",
+      "platform": "windows"
+    },
+    "lifecycle": {
+      "run_mode": "extension",
+      "auto_start": false
     }
   }
 }

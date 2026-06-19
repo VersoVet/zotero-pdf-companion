@@ -200,7 +200,7 @@ Preferences accessibles via `Options` du plugin dans Zotero :
 
 | Preference | Defaut | Description |
 |-----------|--------|-------------|
-| `extensions.pdfcompanion.serverHost` | `10.0.0.44` | IP du serveur backend |
+| `extensions.pdfcompanion.serverHost` | `10.0.0.21` | IP du serveur backend (Axon) |
 | `extensions.pdfcompanion.serverPort` | `8451` | Port zotero-manager |
 
 Le port Paper Reader (8462) est en dur dans le code.

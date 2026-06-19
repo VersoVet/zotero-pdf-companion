@@ -1133,10 +1133,9 @@ PdfCompanion = {
             return;
         }
 
-        // Batch: single toast
+        // Batch: use enrichMetadata for each item with batch toast
         let total = items.length;
-        let toast = this.Toast.progress("Enrichissement - 0/" + total);
-        toast.update("Démarrage...");
+        let batchToast = this.Toast.progress("Enrichissement - 0/" + total);
 
         let enriched = 0;
         let failed = 0;
@@ -1144,50 +1143,28 @@ PdfCompanion = {
         for (let i = 0; i < items.length; i++) {
             let item = items[i];
             let title = item.getField("title") || "Unknown";
-            toast.setHeadline("Enrichissement - " + (i + 1) + "/" + total);
-            toast.update(title.substring(0, 50));
+
+            // Update batch toast
+            batchToast.setHeadline("Enrichissement - " + (i + 1) + "/" + total);
+            batchToast.update(title.substring(0, 50) + " (étape 1/2: enrichissement...)");
 
             try {
-                let url = this.config.apiUrl + "/enrich/item-stream/" + encodeURIComponent(item.key);
-                let finalResult = await new Promise((resolve, reject) => {
-                    let xhr = new XMLHttpRequest();
-                    let lastIndex = 0;
-                    let result = null;
-                    xhr.open("GET", url, true);
-                    xhr.setRequestHeader("Accept", "text/event-stream");
-                    xhr.onprogress = () => {
-                        let newData = xhr.responseText.substring(lastIndex);
-                        lastIndex = xhr.responseText.length;
-                        for (let line of newData.split("\n")) {
-                            if (line.startsWith("data: ")) {
-                                try {
-                                    let data = JSON.parse(line.substring(6));
-                                    toast.update((i + 1) + "/" + total + " - " + (data.message || data.event));
-                                    if (data.event === "complete" || data.event === "error") result = data;
-                                } catch (e) {}
-                            }
-                        }
-                    };
-                    xhr.onload = () => resolve(result);
-                    xhr.onerror = () => reject(new Error("Connection failed"));
-                    xhr.ontimeout = () => reject(new Error("Timeout"));
-                    xhr.timeout = 120000;
-                    xhr.send();
-                });
-
-                if (finalResult && finalResult.status === "success") {
-                    enriched++;
-                    await item.reload();
-                } else {
-                    failed++;
-                }
+                // Call enrichMetadata which includes:
+                // 1. Check if PDF exists
+                // 2. Call /enrich/item-stream/{key}
+                // 3. If no PDF found, call recoverPdf() with 10-source cascade
+                // 4. Apply enriched fields to item
+                await this.enrichMetadata(item);
+                enriched++;
+                batchToast.update(title.substring(0, 50) + " ✓");
             } catch (e) {
                 failed++;
-                this.log("Batch enrich error: " + e);
+                this.log("Batch enrich error for " + title + ": " + e);
+                batchToast.update(title.substring(0, 50) + " ✗ (error: " + e.message + ")");
             }
         }
 
-        toast.close();
+        batchToast.close();
         this.showNotification("Enrichissement terminé",
             enriched + " enrichis, " + failed + " échecs sur " + total);
     },

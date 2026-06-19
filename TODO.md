@@ -142,80 +142,24 @@ if (!hasPdf) {
 
 ## Feature Requests & Enhancements
 
-### 🟡 [PROPOSED] Expand PDF recovery sources
+### ✅ [COMPLETED] Expand PDF recovery sources
 
-**Status**: Proposed  
-**Priority**: Medium  
-**Difficulty**: Easy to Medium  
-**Benefit**: 85-90% coverage of academic articles
+**Status**: COMPLETED (v4.16.0, 2026-05-04)  
+**Implémenté dans**: backend zotero-manager (pdf_resolver.py)
 
-**Current Sources** (4):
-1. Unpaywall - OA metadata
-2. PubMed Central - Biomedical
-3. Publisher (DOI) - Sometimes OA
-4. Sci-Hub - Fallback (grey legal area)
+**Cascade 10 sources (ordre d'exécution)**:
+1. **Unpaywall** - OA metadata
+2. **arXiv** - Préprints (physics, math, CS, bio)
+3. **Europe PMC** - Biomedical OA (45M+ articles)
+4. **CORE** - Multi-disciplinary OA (200M+ articles)
+5. **CrossRef** - Liens PDF dans métadonnées
+6. **Direct Publisher** - MDPI, Frontiers CDN
+7. **DOI Redirect** - Scraping page éditeur
+8. **Hindawi** - Éditeur OA (DOIs hindawi)
+9. **PubMed Central** - NIH/NCBI
+10. **Sci-Hub** - Fallback (via PubMed puis DOI)
 
-**TIER 1 - Quick Wins** (Easy to implement):
-1. **arXiv** (2M+ preprints)
-   - physics, math, CS, q-bio
-   - Free API, direct PDF downloads
-   - 100% legal
-
-2. **Europe PMC** (45M+ articles)
-   - Better coverage than PubMed
-   - Free API, REST accessible
-   - 100% legal
-
-3. **CORE** (200M+ OA articles)
-   - Global OA aggregator
-   - Free API available
-   - Direct PDF access
-
-4. **Improve CrossRef OA** (current)
-   - Better filtering for OA articles
-   - Existing API, just better queries
-
-**TIER 2 - Useful** (Medium complexity):
-1. **Hindawi** (300+ OA journals)
-   - Major OA publisher
-   - API available, direct PDFs
-   - 100% legal
-
-2. **bioRxiv/medRxiv** (preprints)
-   - Biomedical preprints
-   - API available
-   - 100% legal
-
-3. **SSRN** (800k social science papers)
-   - Economics, law, management
-   - Limited API but accessible
-   - 100% legal
-
-**TIER 3 - High Risk** (Don't implement):
-1. **Google Scholar** - No API, scraping violates ToS
-2. **ResearchGate** - No official API, scraping risky
-
-**Recommended Cascade Order**:
-```
-1. arXiv          (quick for preprints)
-2. Unpaywall      (established OA finder)
-3. Europe PMC     (better biomedical coverage)
-4. PubMed Central (NIH articles)
-5. Hindawi        (OA publisher)
-6. CORE           (OA aggregator)
-7. Publisher DOI  (sometimes OA)
-8. Sci-Hub        (fallback only)
-```
-
-**Expected Impact**:
-- Current: ~65% coverage with 4 sources
-- After TIER 1: ~80% coverage
-- After TIER 2: ~85-90% coverage
-
-**Implementation Notes**:
-- All free APIs (no subscription needed)
-- arXiv + Europe PMC easiest to add first
-- Can add incrementally without breaking existing sources
+Messages numérotés `[1/10]` à `[10/10]` avec emoji ✅/❌ dans SSE.
 
 ---
 

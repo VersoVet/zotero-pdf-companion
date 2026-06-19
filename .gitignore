@@ -4,3 +4,33 @@
 # OS files
 .DS_Store
 Thumbs.db
+
+# Security-critical patterns
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+credentials*
+secrets*
+private*
+
+# IDE & Development
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Node/Python
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# Logs
+*.log
+logs/

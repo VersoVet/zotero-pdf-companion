@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "name": "PDF Companion",
-  "version": "4.15.0",
-  "description": "Auto PDF fetch for Zotero (v4.15.0)",
+  "version": "4.16.2",
+  "description": "Auto PDF fetch for Zotero (v4.16.2)",
   "author": "Onyx",
   "forge": {
     "type": "custom",
@@ -19,7 +19,7 @@
         {
           "name": "extension",
           "type": "extension",
-          "host": "172.16.0.2",
+          "host": "172.16.0.5",
           "required_files": ["bootstrap.js", "pdfcompanion.js"]
         }
       ],
@@ -42,11 +42,14 @@
     "brain_area": "bibliotheca",
     "routing": {
       "port": 0
-    }
+    },
+    "name": "zotero-pdf-companion-plugin",
+    "type": "custom",
+    "description": "Auto PDF fetch and enrichment for Zotero 7/8 with Onyx integration"
   },
   "heart": {
     "deployment": {
-      "target_host": "172.16.0.2",
+      "target_host": "172.16.0.5",
       "platform": "windows"
     },
     "lifecycle": {

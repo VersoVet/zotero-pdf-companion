@@ -471,6 +471,18 @@ PdfCompanion = {
             iconMenu.appendChild(iconPopup);
             menupopup.appendChild(iconMenu);
 
+            // Separator before Copy Item ID
+            let ctxSepCopy = doc.createXULElement('menuseparator');
+            ctxSepCopy.id = 'pdfcompanion-context-sep-copy';
+            menupopup.appendChild(ctxSepCopy);
+
+            // Copy Item ID menu item
+            let copyIdItem = doc.createXULElement('menuitem');
+            copyIdItem.id = 'pdfcompanion-context-copyid';
+            copyIdItem.setAttribute('label', 'Copy Item ID');
+            copyIdItem.addEventListener('command', () => this.copyItemId());
+            menupopup.appendChild(copyIdItem);
+
             submenu.appendChild(menupopup);
             itemMenu.appendChild(submenu);
             this.storeAddedElement(submenu);
@@ -506,6 +518,18 @@ PdfCompanion = {
             exportItem.setAttribute('label', 'Creer documents...');
             exportItem.addEventListener('command', () => this.openDocumentExportDialog());
             menupopup.appendChild(exportItem);
+
+            // Separator before Copy Collection ID
+            let collSepCopy = doc.createXULElement('menuseparator');
+            collSepCopy.id = 'pdfcompanion-collection-sep-copy';
+            menupopup.appendChild(collSepCopy);
+
+            // Copy Collection ID menu item
+            let copyCollIdItem = doc.createXULElement('menuitem');
+            copyCollIdItem.id = 'pdfcompanion-collection-copyid';
+            copyCollIdItem.setAttribute('label', 'Copy Collection ID');
+            copyCollIdItem.addEventListener('command', () => this.copyCollectionId());
+            menupopup.appendChild(copyCollIdItem);
 
             submenu.appendChild(menupopup);
             collectionMenu.appendChild(submenu);
@@ -2279,9 +2303,21 @@ PdfCompanion = {
         let key = item.key;
         let title = item.getField("title") || "Unknown";
 
-        // Copy to clipboard using Zotero 8 API
-        const { Clipboard } = require("zotero/lib/clipboard");
-        Clipboard.copyText(key);
+        // Copy to clipboard using native Zotero API
+        try {
+            Zotero.Utilities.Internal.copyTextToClipboard(key);
+        } catch (e) {
+            // Fallback for older Zotero versions
+            this.log("copyItemId: Standard API failed, trying require");
+            try {
+                const { Clipboard } = require("zotero/lib/clipboard");
+                Clipboard.copyText(key);
+            } catch (e2) {
+                this.log("copyItemId: Both clipboard methods failed: " + e2.message);
+                this.showNotification("PDF Companion", "Failed to copy to clipboard");
+                return;
+            }
+        }
 
         // Show notification with ID
         let msg = "ID: " + key + "\n\nCopied to clipboard!";
@@ -2289,6 +2325,39 @@ PdfCompanion = {
             msg += "\n\n(" + items.length + " items selected, showing first)";
         }
         this.showNotification(title.substring(0, 30), msg);
+    },
+
+    copyCollectionId() {
+        this.log("copyCollectionId called");
+        let collection = this.getSelectedCollection();
+        if (!collection) {
+            this.log("copyCollectionId: No collection found");
+            this.showNotification("PDF Companion", "No collection selected");
+            return;
+        }
+
+        let collectionKey = collection.key;
+        let collectionName = collection.name || "Unknown Collection";
+
+        // Copy to clipboard using native Zotero API
+        try {
+            Zotero.Utilities.Internal.copyTextToClipboard(collectionKey);
+        } catch (e) {
+            // Fallback for older Zotero versions
+            this.log("copyCollectionId: Standard API failed, trying require");
+            try {
+                const { Clipboard } = require("zotero/lib/clipboard");
+                Clipboard.copyText(collectionKey);
+            } catch (e2) {
+                this.log("copyCollectionId: Both clipboard methods failed: " + e2.message);
+                this.showNotification("PDF Companion", "Failed to copy to clipboard");
+                return;
+            }
+        }
+
+        // Show notification with collection ID
+        let msg = "ID: " + collectionKey + "\n\nCopied to clipboard!";
+        this.showNotification(collectionName.substring(0, 30), msg);
     },
 
     async showFormattedNotes() {
